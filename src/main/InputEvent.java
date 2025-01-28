@@ -2,16 +2,19 @@ public class InputEvent {
 
     public String time;
     public String zone;
-    public String event_type;
-    public String severity;
+    public EventType event_type;
+    public Severity severity;
 
     public InputEvent(String time, String zone, String event_type, String severity){
         this.time = time;
         this.zone = zone;
-        this.event_type = event_type;
-        this.severity = severity;
+        this.event_type = EventType.valueOf(event_type);;
+        this.severity = Severity.valueOf(severity);
     }
 
+    public Severity getSeverity() {
+        return severity;
+    }
 
     @Override
     public String toString() {

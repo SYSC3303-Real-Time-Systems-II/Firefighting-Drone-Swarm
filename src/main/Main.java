@@ -1,15 +1,13 @@
 public class Main {
     public static void main(String[] args) {
 
-        MessageRelay relay = new MessageRelay();
-
-        FireIncidentSubsystem fis1 = new FireIncidentSubsystem("FIS", "test.txt",relay);
+        FireIncidentSubsystem fis1 = new FireIncidentSubsystem("FIS", "test.txt");
         Thread fis1_t1 = new Thread(fis1);
 
-        Scheduler scheduler = new Scheduler("Scdlr",relay);
+        Scheduler scheduler = new Scheduler("Scdlr");
         Thread scheduler_t1 = new Thread(scheduler);
 
-        DroneSubsystem drone = new DroneSubsystem("Drone", relay);
+        DroneSubsystem drone = new DroneSubsystem("Drone", scheduler);
         Thread drone_t1 = new Thread(drone);
 
         fis1_t1.start();
