@@ -1,11 +1,11 @@
 public class Main {
     public static void main(String[] args) {
 
-        FireIncidentSubsystem fis1 = new FireIncidentSubsystem("FIS", "test.txt");
-        Thread fis1_t1 = new Thread(fis1);
-
         Scheduler scheduler = new Scheduler("Scdlr");
         Thread scheduler_t1 = new Thread(scheduler);
+
+        FireIncidentSubsystem fis1 = new FireIncidentSubsystem("FIS", "test.txt", scheduler);
+        Thread fis1_t1 = new Thread(fis1);
 
         DroneSubsystem drone = new DroneSubsystem("Drone", scheduler);
         Thread drone_t1 = new Thread(drone);

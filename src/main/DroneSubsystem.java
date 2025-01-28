@@ -18,8 +18,15 @@ public class DroneSubsystem implements Runnable{
 
     @Override
     public void run() {
-        while(true){
-            this.inputEvents.add(this.scheduler.takeInputEvent());
+        int i = 0;
+        while(i < 10){
+            InputEvent event = this.scheduler.takeInputEvent(systemType, name);
+            if (event != null) {
+                this.inputEvents.add(event);
+                /// work todo:
+                this.scheduler.addRelayMessageEvents(event, systemType, name);
+            }
+            i++;
         }
     }
 }

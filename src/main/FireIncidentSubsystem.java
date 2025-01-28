@@ -1,14 +1,13 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Scanner;
-import java.util.ArrayList;
+import java.util.*;
 
 public class FireIncidentSubsystem implements Runnable {
 
     private String name;
     private Systems systemType;
     private Scheduler scheduler;
-    private ArrayList<InputEvent> inputEvents;
+    private Queue<InputEvent> inputEvents;
 
 
     public FireIncidentSubsystem(String name, String inputFileName, Scheduler scheduler){
@@ -18,8 +17,8 @@ public class FireIncidentSubsystem implements Runnable {
         this.scheduler = scheduler;
     }
 
-    public ArrayList<InputEvent> readInput(String inputFileName){
-        ArrayList<InputEvent> inputEvents = new ArrayList<InputEvent>();
+    public Queue<InputEvent> readInput(String inputFileName){
+        Queue<InputEvent> inputEvents = new LinkedList<>();
         try {
             File myObj = new File("data/"+inputFileName);
             Scanner myReader = new Scanner(myObj);
@@ -40,10 +39,14 @@ public class FireIncidentSubsystem implements Runnable {
 
     @Override
     public void run() {
-        while (true) {
-            if (!inputEvents.isEmpty()) {
-
+        int i = 0;
+        while (i < 10) {
+            if (!this.inputEvents.isEmpty()) {
+                this.scheduler.addInputEvent(this.inputEvents.remove(), this.systemType, this.name);
             }
+            this.scheduler.getRelayMessageEvent(systemType, name);
+
+            i++;
         }
     }
 

@@ -1,12 +1,11 @@
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.PriorityQueue;
+import java.util.*;
 
 public class Scheduler implements Runnable {
 
     private String name;
     private Systems systemType;
     private PriorityQueue<InputEvent> inputEvents;
+    private Queue<InputEvent> relayMessageEvents;
 
     public Scheduler(String name) {
         Comparator<InputEvent> priorityComparator = Comparator.comparingInt(inputEvent -> {
@@ -18,28 +17,43 @@ public class Scheduler implements Runnable {
             }
         });
 
-        this.inputEvents = new PriorityQueue<>(priorityComparator);
         this.name = name;
         this.systemType = Systems.Scheduler;
+        this.inputEvents = new PriorityQueue<>(priorityComparator);
+        this.relayMessageEvents = new LinkedList<>();
 
     }
 
-    public synchronized void addInputEvent(InputEvent inputEvent){
-        System.out.println("Adding input event here");
-        this.inputEvents.add(inputEvent);
+    public synchronized void addInputEvent(InputEvent event, Systems systemType, String name){
+        System.out.println("["+ systemType + " - " + name + "] Adding input event: " + event);
+        this.inputEvents.add(event);
     }
 
-    public synchronized InputEvent takeInputEvent(){
-        while (this.inputEvents.isEmpty()) {
-            try{
-                System.out.println("No available input events now waiting...");
-                wait();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+    public synchronized InputEvent takeInputEvent(Systems systemType, String name){
+        InputEvent event = this.inputEvents.poll();
+        if (event != null) {
+            System.out.println("["+ systemType + " - " + name + "] Received event: " + event);
+        } else {
+            System.out.println("["+ systemType + " - " + name + "] No available input events.");
         }
-        return this.inputEvents.poll();
+        return event;
     }
+
+    public synchronized void addRelayMessageEvents(InputEvent event, Systems systemType, String name){
+        System.out.println("["+ systemType + " - " + name + "] Adding relay message event: " + event);
+        this.relayMessageEvents.add(event);
+    }
+
+    public synchronized InputEvent getRelayMessageEvent(Systems systemType, String name){
+        InputEvent event = this.relayMessageEvents.poll();
+        if (event != null) {
+            System.out.println("["+ systemType + " - " + name + "] Received relayed event: " + event);
+        } else {
+            System.out.println("["+ systemType + " - " + name + "] No available relayed events.");
+        }
+        return event;
+    }
+
 
 
 
