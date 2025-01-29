@@ -54,8 +54,14 @@ public class Scheduler implements Runnable {
         return event;
     }
 
+    // Getter methods for testing
+    public PriorityQueue<InputEvent> getInputEvents() {
+        return inputEvents;
+    }
 
-
+    public Queue<InputEvent> getRelayMessageEvents() {
+        return relayMessageEvents;
+    }
 
     public void run() {
 
