@@ -12,6 +12,18 @@ public class InputEvent {
         this.severity = Severity.valueOf(severity);
     }
 
+    public String getTime(){
+        return time;
+    }
+
+    public String getZone(){
+        return zone;
+    }
+
+    public EventType getEventType(){
+        return event_type;
+    }
+
     public Severity getSeverity() {
         return severity;
     }

@@ -37,6 +37,14 @@ public class FireIncidentSubsystem implements Runnable {
         return null;
     }
 
+    /**
+     * Gets the input event queue.
+     * @return the input event queue.
+     */
+    public Queue<InputEvent> getInputEvents() {
+        return inputEvents;
+    }
+
     @Override
     public void run() {
         int i = 0;
