@@ -25,6 +25,8 @@ public class DroneSubsystem implements Runnable{
                 this.inputEvents.add(event);
                 /// work todo:
                 this.scheduler.addRelayMessageEvents(event, systemType, name);
+            } else {
+                this.scheduler.addRelayMessageEvents(null, systemType, name);
             }
             i++;
         }

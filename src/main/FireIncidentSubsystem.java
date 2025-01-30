@@ -75,12 +75,10 @@ public class FireIncidentSubsystem implements Runnable {
             if (!this.inputEvents.isEmpty()) {
                 this.scheduler.addInputEvent(this.inputEvents.remove(), this.systemType, this.name);
             }
-            this.scheduler.getRelayMessageEvent(this.systemType, this.name);
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            this.scheduler.getRelayMessageEvent(this.systemType, this.name, this.inputEvents.isEmpty());
+
+
+
             i++;
         }
     }

@@ -42,16 +42,34 @@ public class Scheduler implements Runnable {
     }
 
     public synchronized void addRelayMessageEvents(InputEvent event, Systems systemType, String name){
-        System.out.println("["+ systemType + " - " + name + "] Adding relay message event: " + event);
-        this.relayMessageEvents.add(event);
+        if (event != null){
+            System.out.println("["+ systemType + " - " + name + "] Adding relay message event: " + event);
+            this.relayMessageEvents.add(event);
+        } else {
+            try {
+                notifyAll();
+                wait();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
-    public synchronized InputEvent getRelayMessageEvent(Systems systemType, String name){
+    public synchronized InputEvent getRelayMessageEvent(Systems systemType, String name, boolean inputEventListEmpty){
         InputEvent event = this.relayMessageEvents.poll();
         if (event != null) {
             System.out.println("["+ systemType + " - " + name + "] Received relayed event: " + event);
         } else {
             System.out.println("["+ systemType + " - " + name + "] No available relayed events.");
+            if (inputEventListEmpty){
+                try {
+                    notifyAll();
+                    wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                return null;
+            }
         }
         return event;
     }
