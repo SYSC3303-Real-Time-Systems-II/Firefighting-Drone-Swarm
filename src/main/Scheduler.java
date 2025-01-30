@@ -27,7 +27,7 @@ public class Scheduler implements Runnable {
     }
 
     public synchronized void addInputEvent(InputEvent event, Systems systemType, String name){
-        System.out.println("["+ systemType + " - " + name + "] Adding input event: " + event);
+        System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Adding input event: " + event);
         event.setZone(zones.get(event.zone_id));
         this.inputEvents.add(event);
     }
@@ -35,7 +35,7 @@ public class Scheduler implements Runnable {
     public synchronized InputEvent takeInputEvent(Systems systemType, String name){
         InputEvent event = this.inputEvents.poll();
         if (event != null) {
-            System.out.println("["+ systemType + " - " + name + "] Received event: " + event);
+            System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Received event: " + event);
         } else {
             System.out.println("["+ systemType + " - " + name + "] No available input events.");
         }
@@ -44,7 +44,7 @@ public class Scheduler implements Runnable {
 
     public synchronized void addRelayMessageEvents(InputEvent event, Systems systemType, String name){
         if (event != null){
-            System.out.println("["+ systemType + " - " + name + "] Adding relay message event: " + event);
+            System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Adding relay message event: " + event);
             this.relayMessageEvents.add(event);
         } else {
             try {
@@ -59,7 +59,7 @@ public class Scheduler implements Runnable {
     public synchronized InputEvent getRelayMessageEvent(Systems systemType, String name, boolean inputEventListEmpty){
         InputEvent event = this.relayMessageEvents.poll();
         if (event != null) {
-            System.out.println("["+ systemType + " - " + name + "] Received relayed event: " + event);
+            System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Received relayed event: " + event);
         } else {
             System.out.println("["+ systemType + " - " + name + "] No available relayed events.");
             if (inputEventListEmpty){
@@ -81,9 +81,6 @@ public class Scheduler implements Runnable {
         }
         System.out.println("["+ systemType + " - " + name + "] Added zones: " + this.zones);
     }
-
-
-
 
     public void run() {
 

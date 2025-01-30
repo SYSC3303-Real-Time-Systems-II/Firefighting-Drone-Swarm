@@ -1,4 +1,4 @@
-import java.nio.charset.CoderResult;
+import java.time.LocalTime;
 import java.util.ArrayList;
 
 import static java.lang.Thread.sleep;
@@ -11,10 +11,10 @@ public class DroneSubsystem implements Runnable{
     private Coordinate current_coords;
 
 
-    private final Double ACCELERATION_TIME = 0.51;
-    private final Double DECELERATION_TIME = 0.75;
-    private final Double TOP_SPEED = 20.8; //meter per sec
-    private final Double DROP_WATER_TIME = 10.0; //UPDATE THE ITER0
+    private final double ACCELERATION_TIME = 0.051;
+    private final double DECELERATION_TIME = 0.075;
+    private final double TOP_SPEED = 20.8; //meter per sec
+    private final double DROP_WATER_TIME = 20.0;
     private ArrayList<InputEvent> inputEvents;
 
     public DroneSubsystem(String name, Scheduler scheduler) {
@@ -25,13 +25,13 @@ public class DroneSubsystem implements Runnable{
         this.current_coords = new Coordinate(0,0);
     }
 
-    public int calulateTotalTravelTime(InputEvent event){
+    //returns the time taken to put out fire in minutes
+    public double calulateTotalTravelTime(InputEvent event){
         Coordinate fire_coords = event.zone.getZoneCenter();
         double distance = Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2));
         double travelTime = 2*(distance / TOP_SPEED); //both ways
-        //rounded value
-        int totalTravelTime = (int) Math.round((travelTime+ACCELERATION_TIME+DECELERATION_TIME+DROP_WATER_TIME) * 100);
-        return totalTravelTime;
+        double totalSeconds = travelTime+ACCELERATION_TIME+DECELERATION_TIME+DROP_WATER_TIME;
+        return totalSeconds/60;
     }
 
     @Override
@@ -40,17 +40,16 @@ public class DroneSubsystem implements Runnable{
         while(i < 10){
             InputEvent event = this.scheduler.takeInputEvent(systemType, name);
             if (event != null) {
-                int travelTime = calulateTotalTravelTime(event);
-                System.out.println("["+ systemType + " - " + name + "] HANDLING FIRE: " + event);
+                double travelTime = calulateTotalTravelTime(event);
+                System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] HANDLING FIRE: " + event);
                 try {
-                    sleep(travelTime);
+                    Thread.sleep((int) (travelTime * 1000));
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-                System.out.println("["+ systemType + " - " + name + "] RETURNING: " + event);
-
+                event.time = event.time.plusMinutes((long) travelTime); //update time of replay package
+                System.out.println("["+event.time +"]["+ systemType + " - " + name + "] RETURNING: " + event);
                 this.inputEvents.add(event);
-                /// work todo:
                 this.scheduler.addRelayMessageEvents(event, systemType, name);
             } else {
                 this.scheduler.addRelayMessageEvents(null, systemType, name);
