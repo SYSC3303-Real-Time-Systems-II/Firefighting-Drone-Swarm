@@ -1,13 +1,17 @@
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+
 public class InputEvent {
 
-    public String time;
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");;
+    public LocalTime time;
     public int zone_id;
     public Zone zone;
     public EventType event_type;
     public Severity severity;
 
     public InputEvent(String time, int zone_id, String event_type, String severity){
-        this.time = time;
+        this.time = LocalTime.parse(time, TIME_FORMATTER);
         this.zone_id = zone_id;
         this.zone = null;
         this.event_type = EventType.valueOf(event_type);
