@@ -50,7 +50,7 @@ public class FireIncidentSubsystem implements Runnable {
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine();
                 String[] parts = line.split(","); // Split by comma for CSV
-                InputEvent event = new InputEvent(parts[0], parts[1], parts[2], parts[3]);
+                InputEvent event = new InputEvent(parts[0], Integer.parseInt(parts[1]), parts[2], parts[3]);
                 inputEvents.add(event);
             }
             return inputEvents;
