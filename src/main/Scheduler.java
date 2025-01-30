@@ -6,6 +6,7 @@ public class Scheduler implements Runnable {
     private Systems systemType;
     private PriorityQueue<InputEvent> inputEvents;
     private Queue<InputEvent> relayMessageEvents;
+    private Map<Integer, Zone> zones;
 
     public Scheduler(String name) {
         Comparator<InputEvent> priorityComparator = Comparator.comparingInt(inputEvent -> {
@@ -21,6 +22,7 @@ public class Scheduler implements Runnable {
         this.systemType = Systems.Scheduler;
         this.inputEvents = new PriorityQueue<>(priorityComparator);
         this.relayMessageEvents = new LinkedList<>();
+        this.zones = new HashMap<>();
 
     }
 
@@ -52,6 +54,13 @@ public class Scheduler implements Runnable {
             System.out.println("["+ systemType + " - " + name + "] No available relayed events.");
         }
         return event;
+    }
+
+    public synchronized  void addZones(ArrayList<Zone> zonesList, Systems systemType, String name){
+        for (Zone zone : zonesList) {
+            this.zones.put(zone.getZoneID(), zone);
+        }
+        System.out.println("["+ systemType + " - " + name + "] Added zones: " + this.zones);
     }
 
 
