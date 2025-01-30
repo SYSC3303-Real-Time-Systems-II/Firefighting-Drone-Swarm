@@ -28,6 +28,7 @@ public class Scheduler implements Runnable {
 
     public synchronized void addInputEvent(InputEvent event, Systems systemType, String name){
         System.out.println("["+ systemType + " - " + name + "] Adding input event: " + event);
+        event.setZone(zones.get(event.zone_id));
         this.inputEvents.add(event);
     }
 
