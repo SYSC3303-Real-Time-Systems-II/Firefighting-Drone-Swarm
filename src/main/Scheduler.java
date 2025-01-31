@@ -91,6 +91,10 @@ public class Scheduler implements Runnable {
         return relayMessageEvents;
     }
 
+    public Map<Integer, Zone> getZones() {
+        return zones;
+    }
+
     public void run() {
 
     }
