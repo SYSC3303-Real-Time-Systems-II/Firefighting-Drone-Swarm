@@ -13,7 +13,7 @@ public class Zone {
         this.zoneCenter = calculateZoneCenter();
     }
 
-    private Coordinate calculateZoneCenter(){
+    public Coordinate calculateZoneCenter(){
         double cx = (this.zoneStart.getX() + this.zoneEnd.getX()) / 2.0;
         double cy = (this.zoneStart.getY() + this.zoneEnd.getY()) / 2.0;
 

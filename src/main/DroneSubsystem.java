@@ -27,7 +27,7 @@ public class DroneSubsystem implements Runnable{
 
     //returns the time taken to put out fire in minutes
     public double calulateTotalTravelTime(InputEvent event){
-        Coordinate fire_coords = event.zone.getZoneCenter();
+        Coordinate fire_coords = event.getZone().getZoneCenter();
         double distance = Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2));
         double travelTime = 2*(distance / TOP_SPEED); //both ways
         double totalSeconds = travelTime+ACCELERATION_TIME+DECELERATION_TIME+DROP_WATER_TIME;
@@ -41,18 +41,18 @@ public class DroneSubsystem implements Runnable{
             InputEvent event = this.scheduler.takeInputEvent(systemType, name);
             if (event != null) {
                 double travelTime = calulateTotalTravelTime(event);
-                System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] HANDLING FIRE: " + event);
+                System.out.println("[" +event.getTime() +"]["+ systemType + " - " + name + "] HANDLING FIRE: " + event);
                 try {
                     Thread.sleep((int) (travelTime * 1000));
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
-                event.time = event.time.plusMinutes((long) travelTime); //update time of replay package
-                System.out.println("["+event.time +"]["+ systemType + " - " + name + "] RETURNING: " + event);
+                event.setTime(event.getTime().plusMinutes((long) travelTime)); //update time of replay package
+                System.out.println("["+event.getTime() +"]["+ systemType + " - " + name + "] RETURNING: " + event);
                 this.inputEvents.add(event);
-                this.scheduler.addRelayMessageEvents(event, systemType, name);
+//                this.scheduler.addRelayMessageEvents(event, systemType, name);
             } else {
-                this.scheduler.addRelayMessageEvents(null, systemType, name);
+//                this.scheduler.addRelayMessageEvents(null, systemType, name);
             }
             i++;
         }
