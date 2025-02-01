@@ -24,6 +24,14 @@ public class Zone {
         return zoneID;
     }
 
+    public Coordinate getZoneStart() {
+        return zoneStart;
+    }
+
+    public Coordinate getZoneEnd() {
+        return zoneEnd;
+    }
+
     public Coordinate getZoneCenter() {
         return zoneCenter;
     }

@@ -28,10 +28,19 @@ public class DroneSubsystem implements Runnable{
     public int calulateTotalTravelTime(InputEvent event){
         Coordinate fire_coords = event.zone.getZoneCenter();
         double distance = Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2));
-        double travelTime = 2*(distance / TOP_SPEED); //both ways
-        //rounded value
+        double travelTime = 2 * (distance / TOP_SPEED); //both ways
+        // rounded value
         int totalTravelTime = (int) Math.round((travelTime+ACCELERATION_TIME+DECELERATION_TIME+DROP_WATER_TIME) * 100);
         return totalTravelTime;
+    }
+
+    /**
+     * Returns the scheduler that is used with the drone, where the drone consistently checking to see if the scheduler has
+     * received a request.
+     * @return the scheduler.
+     */
+    public Scheduler getScheduler() {
+        return scheduler;
     }
 
     @Override

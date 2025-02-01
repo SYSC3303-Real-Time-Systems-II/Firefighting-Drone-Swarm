@@ -75,16 +75,30 @@ public class Scheduler implements Runnable {
         return event;
     }
 
-    public synchronized  void addZones(ArrayList<Zone> zonesList, Systems systemType, String name){
+    public synchronized void addZones(ArrayList<Zone> zonesList, Systems systemType, String name){
         for (Zone zone : zonesList) {
             this.zones.put(zone.getZoneID(), zone);
         }
         System.out.println("["+ systemType + " - " + name + "] Added zones: " + this.zones);
     }
 
+    /**
+     * Returns the queue of the relayed message events back to the fire incident subsystem from the drone through the scheduler.
+     * @return the relayed message events.
+     */
+    public Queue<InputEvent> getRelayMessageEvents() {
+        return relayMessageEvents;
+    }
 
+    /**
+     * Returns the queue of the input events that have been sent to the scheduler.
+     * @return the input event queue.
+     */
+    public PriorityQueue<InputEvent> getInputEvents() {
+        return inputEvents;
+    }
 
-
+    @Override
     public void run() {
 
     }
