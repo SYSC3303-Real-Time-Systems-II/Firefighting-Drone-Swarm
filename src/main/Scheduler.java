@@ -5,10 +5,12 @@ public class Scheduler implements Runnable {
     private String name;
     private Systems systemType;
     private PriorityQueue<InputEvent> inputEvents;
-    private Queue<InputEvent> relayMessageEvents;
+    private Queue<RelayPackage> confirmationPackages;
     private Map<Integer, Zone> zones;
+    private RelayBuffer relayBuffer;
+    private EventBuffer eventBuffer;
 
-    public Scheduler(String name) {
+    public Scheduler(String name, RelayBuffer relayBuffer, EventBuffer eventBuffer) {
         Comparator<InputEvent> priorityComparator = Comparator.comparingInt(inputEvent -> {
             switch (inputEvent.getSeverity()) {
                 case High: return 1; // Highest priority
@@ -21,66 +23,59 @@ public class Scheduler implements Runnable {
         this.name = name;
         this.systemType = Systems.Scheduler;
         this.inputEvents = new PriorityQueue<>(priorityComparator);
-        this.relayMessageEvents = new LinkedList<>();
+        this.confirmationPackages = new LinkedList<>();
         this.zones = new HashMap<>();
 
+        this.relayBuffer = relayBuffer;
+        this.eventBuffer = eventBuffer;
     }
 
-    public synchronized void addInputEvent(InputEvent event, Systems systemType, String name){
-        System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Adding input event: " + event);
-        event.setZone(zones.get(event.zone_id));
-        this.inputEvents.add(event);
-    }
-
-    public synchronized InputEvent takeInputEvent(Systems systemType, String name){
-        InputEvent event = this.inputEvents.poll();
-        if (event != null) {
-            System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Received event: " + event);
-        } else {
-            System.out.println("["+ systemType + " - " + name + "] No available input events.");
-        }
-        return event;
-    }
-
-    public synchronized void addRelayMessageEvents(InputEvent event, Systems systemType, String name){
-        if (event != null){
-            System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Adding relay message event: " + event);
-            this.relayMessageEvents.add(event);
-        } else {
-            try {
-                notifyAll();
-                wait();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public synchronized InputEvent getRelayMessageEvent(Systems systemType, String name, boolean inputEventListEmpty){
-        InputEvent event = this.relayMessageEvents.poll();
-        if (event != null) {
-            System.out.println("[" +event.time +"]["+ systemType + " - " + name + "] Received relayed event: " + event);
-        } else {
-            System.out.println("["+ systemType + " - " + name + "] No available relayed events.");
-            if (inputEventListEmpty){
-                try {
-                    notifyAll();
-                    wait();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                return null;
-            }
-        }
-        return event;
-    }
-
-    public synchronized  void addZones(ArrayList<Zone> zonesList, Systems systemType, String name){
+    public synchronized void addZones(ArrayList<Zone> zonesList, Systems systemType, String name) {
         for (Zone zone : zonesList) {
             this.zones.put(zone.getZoneID(), zone);
         }
-        System.out.println("["+ systemType + " - " + name + "] Added zones: " + this.zones);
+        System.out.println("[" + systemType + " - " + name + "] Added zones: " + this.zones);
     }
+
+    @Override
+    public void run() {
+        int i = 0;
+
+        while (i < 10) {
+            // Step 1: Read from the Relay Buffer
+            RelayPackage receivedPackage = relayBuffer.getRelayPackage(this.systemType);
+            if (receivedPackage != null) {
+                if (receivedPackage.getZone() != null) { // Zone Package
+                    this.addZones(receivedPackage.getZone(), this.systemType, this.name);
+                } else { // Event Package
+                    System.out.println(this.name + ": Received <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.FireIncidentSubsystem);
+                    // Process the event and add it to the inputEvents queue
+                    InputEvent receivedEvent = receivedPackage.getEvent();
+                    receivedEvent.setZone(zones.get(receivedEvent.getZoneId())); // Set the zone for the event
+                    this.inputEvents.add(receivedEvent);
+
+                }
+            }
+
+
+            // Step 2: Send the highest-priority event to the Drone
+            if (!this.inputEvents.isEmpty()) {
+                InputEvent sendingEvent = this.inputEvents.poll();
+                System.out.println(this.name + ": SENDING --> " + sendingEvent.toString() + " TO: " + Systems.DroneSubsystem);
+                this.eventBuffer.addInputEvent(sendingEvent, Systems.DroneSubsystem);
+
+                // Step 3: Check if there is any event back from the Drone
+                InputEvent receivedEvent = eventBuffer.getInputEvent(this.systemType);
+                if (receivedEvent != null) {
+                    System.out.println(this.name + ": Received <-- " + receivedEvent.toString() + " FROM: " + Systems.DroneSubsystem);
+                    // Create a confirmation package to send back to the FireIncidentSubsystem
+                    RelayPackage sendingPackage = new RelayPackage("DRONE_CONFIRMATION", Systems.FireIncidentSubsystem, receivedEvent, null);
+                    this.confirmationPackages.add(sendingPackage);
+                } else {
+                    System.out.println(this.name + ": No event from Drone, retrying...");
+                }
+            }
+
 
     // Getter methods for testing
     public PriorityQueue<InputEvent> getInputEvents() {
@@ -96,6 +91,14 @@ public class Scheduler implements Runnable {
     }
 
     public void run() {
+            // Step 4: Send confirmation packages back to the FireIncidentSubsystem
+            if (!this.confirmationPackages.isEmpty()) {
+                RelayPackage sendingPackage = this.confirmationPackages.poll();
+                System.out.println(this.name + ": SENDING CONFIRMATION FOR --> " + sendingPackage.getRelayPackageID() + " TO: " + sendingPackage.getReceiverSystem());
+                relayBuffer.addReplayPackage(sendingPackage);
+            }
 
+            i++;
+        }
     }
 }
