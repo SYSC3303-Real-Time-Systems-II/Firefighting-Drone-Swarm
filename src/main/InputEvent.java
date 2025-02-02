@@ -20,14 +20,6 @@ public class InputEvent {
         this.status = status;
     }
 
-    public String getTime(){
-        return time;
-    }
-
-    public int getZoneId(){
-        return zone_id;
-    }
-
     public EventType getEventType(){
         return event_type;
     }

@@ -80,15 +80,6 @@ public class FireIncidentSubsystem implements Runnable {
         return zonesList;
     }
 
-    /**
-     * Returns the scheduler for the fire incident subsystem.
-     * @return scheduler
-     */
-    public Scheduler getScheduler() {
-        return scheduler;
-    }
-
-
     @Override
     public void run() {
         int i = 0;
