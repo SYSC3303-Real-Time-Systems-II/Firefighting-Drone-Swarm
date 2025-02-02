@@ -1,11 +1,11 @@
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+
 public class RelayBuffer {
     private final Map<Systems, ArrayList<RelayPackage>> buffer = new HashMap<>();
 
     public RelayBuffer() {
-        // Initialize the buffer for each system
         for (Systems system : Systems.values()) {
             buffer.put(system, new ArrayList<>());
         }
@@ -15,7 +15,7 @@ public class RelayBuffer {
     public synchronized void addReplayPackage(RelayPackage relayPackage) {
         Systems receiver = relayPackage.getReceiverSystem();
         buffer.get(receiver).add(relayPackage);
-        notifyAll(); // Notify all waiting threads that a new package is available
+        notifyAll(); // Notify all waiting threads
     }
 
     // Get a RelayPackage from the buffer for a specific system
