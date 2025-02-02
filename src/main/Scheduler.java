@@ -37,6 +37,15 @@ public class Scheduler implements Runnable {
         System.out.println("[" + systemType + " - " + name + "] Added zones: " + this.zones);
     }
 
+    // Getter methods for testing
+    public PriorityQueue<InputEvent> getInputEvents() {
+        return inputEvents;
+    }
+
+    public Map<Integer, Zone> getZones() {
+        return zones;
+    }
+
     @Override
     public void run() {
         int i = 0;
@@ -77,20 +86,6 @@ public class Scheduler implements Runnable {
             }
 
 
-    // Getter methods for testing
-    public PriorityQueue<InputEvent> getInputEvents() {
-        return inputEvents;
-    }
-
-    public Queue<InputEvent> getRelayMessageEvents() {
-        return relayMessageEvents;
-    }
-
-    public Map<Integer, Zone> getZones() {
-        return zones;
-    }
-
-    public void run() {
             // Step 4: Send confirmation packages back to the FireIncidentSubsystem
             if (!this.confirmationPackages.isEmpty()) {
                 RelayPackage sendingPackage = this.confirmationPackages.poll();
