@@ -11,6 +11,7 @@ public class InputEvent {
     private Severity severity;
     private Status status;
 
+
     public InputEvent(String time, int zone_id, String event_type, String severity, Status status){
         this.time = LocalTime.parse(time, TIME_FORMATTER);
         this.zoneId = zone_id;

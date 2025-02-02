@@ -77,6 +77,20 @@ public class Scheduler implements Runnable {
             }
 
 
+    // Getter methods for testing
+    public PriorityQueue<InputEvent> getInputEvents() {
+        return inputEvents;
+    }
+
+    public Queue<InputEvent> getRelayMessageEvents() {
+        return relayMessageEvents;
+    }
+
+    public Map<Integer, Zone> getZones() {
+        return zones;
+    }
+
+    public void run() {
             // Step 4: Send confirmation packages back to the FireIncidentSubsystem
             if (!this.confirmationPackages.isEmpty()) {
                 RelayPackage sendingPackage = this.confirmationPackages.poll();
