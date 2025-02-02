@@ -57,6 +57,15 @@ public class Scheduler implements Runnable {
     }
 
     /**
+     * Retrieves a map of all zones currently managed by the scheduler.
+     *
+     * @return A map of zone IDs to Zone objects.
+     */
+    public Map<Integer, Zone> getZones() {
+        return zones;
+    }
+    
+    /**
      * The run method is executed when the thread starts.
      * It reads events from the RelayBuffer, prioritizes them, and sends them to the DroneSubsystem.
      * It also handles confirmation messages from the DroneSubsystem and sends them back to the FireIncidentSubsystem.
@@ -115,4 +124,6 @@ public class Scheduler implements Runnable {
             i++;
         }
     }
+
+
 }
