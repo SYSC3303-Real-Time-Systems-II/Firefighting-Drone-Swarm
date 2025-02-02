@@ -4,26 +4,21 @@ import java.time.LocalTime;
 import java.time.Duration;
 import java.util.*;
 
-import static java.lang.Thread.sleep;
-
 public class FireIncidentSubsystem implements Runnable {
 
     private String name;
     private Systems systemType;
-    private Scheduler scheduler;
     private Queue<InputEvent> inputEvents;
     private ArrayList<Zone> zonesList;
     private LocalTime current_time;
+    private RelayBuffer relayBuffer;
 
-
-
-
-    public FireIncidentSubsystem(String name, String inputEventFileName, String inputZoneFileName,Scheduler scheduler){
+    public FireIncidentSubsystem(String name, String inputEventFileName, String inputZoneFileName,RelayBuffer relayBuffer){
         this.name = name;
         this.systemType = Systems.FireIncidentSubsystem;
         this.inputEvents = readInputEvents(inputEventFileName);
         this.zonesList = readZones(inputZoneFileName);
-        this.scheduler = scheduler;
+        this.relayBuffer = relayBuffer;
         this.current_time = null;
     }
 
@@ -58,7 +53,7 @@ public class FireIncidentSubsystem implements Runnable {
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine();
                 String[] parts = line.split(","); // Split by comma for CSV
-                InputEvent event = new InputEvent(parts[0], Integer.parseInt(parts[1]), parts[2], parts[3]);
+                InputEvent event = new InputEvent(parts[0], Integer.parseInt(parts[1]), parts[2], parts[3],Status.UNRESOLVED);
                 inputEvents.add(event);
             }
             return inputEvents;
@@ -94,34 +89,51 @@ public class FireIncidentSubsystem implements Runnable {
     }
 
 
-
     @Override
     public void run() {
         int i = 0;
-        //send zone info to the scheduler
-        if (!this.zonesList.isEmpty()){
-            this.scheduler.addZones(this.zonesList, this.systemType, this.name);
-        }
-        //send input events to the scheduler and check for acknowledgement
+
+        // Step 1: Send the zone package to the Scheduler
+        RelayPackage zonePackage = new RelayPackage("ZONE_PKG_1", Systems.Scheduler, null, zonesList);
+        relayBuffer.addReplayPackage(zonePackage);
+        System.out.println(this.name + ": SENDING --> " + zonePackage.getRelayPackageID() + " TO: " + zonePackage.getReceiverSystem());
+
         while (i < 10) {
+            // Step 2: Send input events to the Scheduler (if available)
             if (!this.inputEvents.isEmpty()) {
-                InputEvent event = inputEvents.remove();
-                //if first package set time, else sleep to simulate time passing
-                if (current_time == null){
-                    current_time = event.time;
-                } else if (current_time != event.time){
-                    Duration duration = Duration.between(current_time, event.time);
-                    current_time = event.time;
+                InputEvent inputEvent = inputEvents.remove();
+
+
+                // Simulate time passing if this is not the first event
+                if (current_time == null) {
+                    current_time = inputEvent.getTime();
+                } else if (!current_time.equals(inputEvent.getTime())) {
+                    Duration duration = Duration.between(current_time, inputEvent.getTime());
+                    current_time = inputEvent.getTime();
                     try {
-                        Thread.sleep(duration.toMinutes()*100);
+                        Thread.sleep(duration.toMinutes() * 100); // Simulate time delay
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 }
-                this.scheduler.addInputEvent(event, this.systemType, this.name);
+
+                RelayPackage inputEventPackage = new RelayPackage("INPUT_EVENT_" + i, Systems.Scheduler, inputEvent, null);
+                System.out.println(this.name + ": SENDING --> " + inputEventPackage.getRelayPackageID() + " TO: " + inputEventPackage.getReceiverSystem());
+                relayBuffer.addReplayPackage(inputEventPackage);
+            } else {
+                // Step 3: If no events to send, try to read from the buffer
+                RelayPackage receivedPackage = relayBuffer.getRelayPackage(this.systemType);
+                if (receivedPackage != null) {
+                    System.out.println(this.name + ": Received <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.Scheduler);
+                } else {
+                    System.out.println(this.name + ": No item for FireIncidentSubsystem, retrying...");
+                    i--; // Retry the same iteration
+                }
             }
-            this.scheduler.getRelayMessageEvent(this.systemType, this.name, this.inputEvents.isEmpty());
             i++;
         }
     }
+
 }
+
+
