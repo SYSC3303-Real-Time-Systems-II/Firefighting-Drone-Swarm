@@ -26,7 +26,7 @@ class CoordinateTest {
         assertEquals(3, c2.getX()); // Checks to see if the x coordinate is correct
         assertEquals(4, c2.getY()); // Checks to see if the y coordinate is correct
 
-        assertEquals("(1, 2)", c1.toString()); // Checks for the to string method
-        assertEquals("(3, 4)", c2.toString()); // Checks for the to string method
+        assertEquals("(1.0, 2.0)", c1.toString()); // Checks for the to string method
+        assertEquals("(3.0, 4.0)", c2.toString()); // Checks for the to string method
     }
 }

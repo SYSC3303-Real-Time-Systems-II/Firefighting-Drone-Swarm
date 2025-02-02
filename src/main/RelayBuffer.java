@@ -11,6 +11,10 @@ public class RelayBuffer {
         }
     }
 
+    public Map<Systems, ArrayList<RelayPackage>> getBuffer() {
+        return buffer;
+    }
+
     // Add a RelayPackage to the buffer
     public synchronized void addReplayPackage(RelayPackage relayPackage) {
         Systems receiver = relayPackage.getReceiverSystem();

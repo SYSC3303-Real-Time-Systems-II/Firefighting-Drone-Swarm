@@ -11,6 +11,10 @@ public class EventBuffer {
         }
     }
 
+    public Map<Systems, ArrayList<InputEvent>> getBuffer() {
+        return buffer;
+    }
+
     // Add an InputEvent to the buffer
     public synchronized void addInputEvent(InputEvent inputEvent, Systems receiverSystem) {
         buffer.get(receiverSystem).add(inputEvent);
