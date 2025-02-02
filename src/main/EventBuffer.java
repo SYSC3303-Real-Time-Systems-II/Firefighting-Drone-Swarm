@@ -2,22 +2,46 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * The EventBuffer class is a thread-safe buffer used for storing and retrieving InputEvent objects.
+ * EventBuffer is for communication between the Scheduler and DroneSubsystem.
+ * It allows systems to communicate by adding and retrieving events in a synchronized manner.
+ */
 public class EventBuffer {
+
+    // A map to store lists of InputEvents for each system
     private final Map<Systems, ArrayList<InputEvent>> buffer = new HashMap<>();
 
+    /**
+     * Constructs an EventBuffer object and initializes the buffer with an empty list for each system.
+     */
     public EventBuffer() {
         for (Systems system : Systems.values()) {
             buffer.put(system, new ArrayList<>());
         }
     }
 
-    // Add an InputEvent to the buffer
+    /**
+     * Adds an InputEvent to the buffer for a specific receiver system.
+     * This method is synchronized to ensure thread safety.
+     *
+     * @param inputEvent     The InputEvent to be added to the buffer.
+     * @param receiverSystem The system that will receive the event.
+     */
     public synchronized void addInputEvent(InputEvent inputEvent, Systems receiverSystem) {
         buffer.get(receiverSystem).add(inputEvent);
         notifyAll(); // Notify all waiting threads
     }
 
-    // Get an InputEvent from the buffer for a specific system
+
+    /**
+     * Retrieves an InputEvent from the buffer for a specific system.
+     * This method is synchronized to ensure thread safety.
+     * If no events are available, the thread will wait until an event is added.
+     *
+     * @param system The system for which to retrieve the event.
+     * @return The InputEvent retrieved from the buffer, or null if the thread is interrupted.
+     */
     public synchronized InputEvent getInputEvent(Systems system) {
         while (buffer.get(system).isEmpty()) {
             try {
