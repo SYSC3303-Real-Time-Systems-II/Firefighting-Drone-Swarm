@@ -25,6 +25,7 @@ public class Scheduler implements Runnable {
         this.inputEvents = new PriorityQueue<>(priorityComparator);
         this.confirmationPackages = new LinkedList<>();
         this.zones = new HashMap<>();
+
         this.relayBuffer = relayBuffer;
         this.eventBuffer = eventBuffer;
     }
@@ -52,8 +53,10 @@ public class Scheduler implements Runnable {
                     InputEvent receivedEvent = receivedPackage.getEvent();
                     receivedEvent.setZone(zones.get(receivedEvent.getZoneId())); // Set the zone for the event
                     this.inputEvents.add(receivedEvent);
+
                 }
             }
+
 
             // Step 2: Send the highest-priority event to the Drone
             if (!this.inputEvents.isEmpty()) {
@@ -72,6 +75,7 @@ public class Scheduler implements Runnable {
                     System.out.println(this.name + ": No event from Drone, retrying...");
                 }
             }
+
 
             // Step 4: Send confirmation packages back to the FireIncidentSubsystem
             if (!this.confirmationPackages.isEmpty()) {

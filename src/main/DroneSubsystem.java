@@ -1,5 +1,3 @@
-import java.time.LocalTime;
-
 public class DroneSubsystem implements Runnable {
 
     private String name;
@@ -7,10 +5,12 @@ public class DroneSubsystem implements Runnable {
     private Coordinate current_coords;
     private EventBuffer eventBuffer;
 
+
     private final double ACCELERATION_TIME = 0.051;
     private final double DECELERATION_TIME = 0.075;
     private final double TOP_SPEED = 20.8; // meters per second
     private final double DROP_WATER_TIME = 20.0;
+
 
     public DroneSubsystem(String name, EventBuffer eventBuffer) {
         this.name = name;
@@ -42,6 +42,7 @@ public class DroneSubsystem implements Runnable {
                 System.out.println(this.name + ": HANDLING EVENT: " + event);
                 try {
                     Thread.sleep((int) (travelTime * 1000)); // Sleep for travel time
+
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     System.err.println("Drone interrupted during travel");
@@ -56,6 +57,7 @@ public class DroneSubsystem implements Runnable {
                 System.out.println(this.name + ": COMPLETED EVENT: " + event);
                 System.out.println(this.name + ": SENDING --> " + event.toString() + " TO: " + Systems.Scheduler);
                 eventBuffer.addInputEvent(event, Systems.Scheduler);
+
             } else {
                 System.out.println("[" + systemType + " - " + name + "] No event to handle, retrying...");
                 i--; // Retry the same iteration

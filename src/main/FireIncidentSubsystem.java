@@ -64,6 +64,30 @@ public class FireIncidentSubsystem implements Runnable {
         return null;
     }
 
+    /**
+     * Returns the queue of input events that the fire incident subsystem want to send to the drone through the scheduler
+     * @return the input events
+     */
+    public Queue<InputEvent> getInputEvents() {
+        return inputEvents;
+    }
+
+    /**
+     * Returns the array list of the zone events.
+     * @return zone events
+     */
+    public ArrayList<Zone> getZonesList() {
+        return zonesList;
+    }
+
+    /**
+     * Returns the scheduler for the fire incident subsystem.
+     * @return scheduler
+     */
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
 
     @Override
     public void run() {
