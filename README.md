@@ -7,6 +7,7 @@ This project simulates a fire incident management system where a FireIncidentSub
 
 ## Files Included
 
+
 1. **Main.java** - The entry point of the application. Initializes and starts the subsystems.
 2. **FireIncidentSubsystem.java** - Reads fire incident data and sends it to the Scheduler.
 3. **Scheduler.java** - Prioritizes events and schedules them for the DroneSubsystem.
@@ -22,7 +23,16 @@ This project simulates a fire incident management system where a FireIncidentSub
 13. **Serverity.java** -  Represents different levels of severity with associated amount of water/foam needed for each event severity
 14. **Systems.java** - A enum Represents different subsystems within the program.
 
-
+**Test Files**:
+1. **CoordinateTest.java**
+2. **DroneSubSystemTest.java**
+3. **EventBufferTest.java**
+4. **FireIncidentSubsystemTest.java**
+5. **InputEventTest.java**
+6. **RelayBufferTest.java**
+7. **RelayPackageTest.java**
+8. **SchedulerTest.java**
+9. **ZoneTest.java**
 
 ## Setup Instructions
 1. **Prerequisites**:
@@ -34,6 +44,12 @@ This project simulates a fire incident management system where a FireIncidentSub
 3. **Run the Program**:
    - Once Program is complied, run the program by running the Main.java class. 	
 
+## Testing Instructions
+**Unit Tests**
+- The project includes JUnit tests for each subsystem to verify the functionality of individual components. All tests are located in the `src/test` directory.
+- To run the tests:
+   - If using IntelliJ IDE, navigate to the `src/test` directory and select `Run 'All Tests'` to execute all tests.
+   - Alternatively, you can run individual test files by right clicking on them and selecting `Run 'TestFileName'`.
 
 
 ## How It Works
