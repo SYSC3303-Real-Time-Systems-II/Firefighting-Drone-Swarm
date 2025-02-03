@@ -1,6 +1,6 @@
 # Firefighting-Drone-Swarm -- ITERATION-1
 
-#Overview
+## Overview
 This project simulates a fire incident management system where a FireIncidentSubsystem detects fire events, a Scheduler prioritizes and schedules them, and a DroneSubsystem handles the events. The system uses buffers (RelayBuffer and EventBuffer) for communication between subsystems.
 
 
@@ -48,7 +48,7 @@ This project simulates a fire incident management system where a FireIncidentSub
 **Unit Tests**
 - The project includes JUnit tests for each subsystem to verify the functionality of individual components. All tests are located in the `src/test` directory.
 - To run the tests:
-   - If using IntelliJ IDE, navigate to the `src/test` directory and select `Run 'All Tests'` to execute all tests.
+   - If using IntelliJ IDE, navigate to the `src/test` directory, right click the directory and select `Run 'All Tests'` to execute all tests.
    - Alternatively, you can run individual test files by right clicking on them and selecting `Run 'TestFileName'`.
 
 
