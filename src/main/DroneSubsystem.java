@@ -11,7 +11,12 @@ public class DroneSubsystem implements Runnable {
     private final double TOP_SPEED = 20.8; // meters per second
     private final double DROP_WATER_TIME = 20.0;
 
-
+    /**
+     * Constructs a DroneSubsystem object.
+     *
+     * @param name          The name of the subsystem.
+     * @param eventBuffer   The EventBuffer used for communication with the Scheduler.
+     */
     public DroneSubsystem(String name, EventBuffer eventBuffer) {
         this.name = name;
         this.systemType = Systems.DroneSubsystem;
@@ -19,7 +24,12 @@ public class DroneSubsystem implements Runnable {
         this.current_coords = new Coordinate(0, 0);
     }
 
-    // Returns the time taken to put out fire in minutes
+    /**
+     * Returns the time taken to put out fire in minutes, based on event coordinates.
+     *
+     * @param event     Event that stores the coordinates of the fire
+     * @return          Returns the time taken to put out fire in minutes
+     */
     public double calculateTotalTravelTime(InputEvent event) {
         Coordinate fire_coords = event.getZone().getZoneCenter();
         double distance = Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2));
