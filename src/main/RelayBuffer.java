@@ -22,6 +22,14 @@ public class RelayBuffer {
     }
 
     /**
+     * Get the relay buffer.
+     * @return buffer.
+     */
+    public Map<Systems, ArrayList<RelayPackage>> getBuffer() {
+        return buffer;
+    }
+
+    /**
      * Adds a RelayPackage to the buffer for the specified receiver system.
      * This method is synchronized to ensure thread safety.
      *

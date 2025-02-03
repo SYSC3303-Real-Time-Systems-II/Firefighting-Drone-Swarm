@@ -22,6 +22,14 @@ public class EventBuffer {
     }
 
     /**
+     * Get the hashmap buffer.
+     * @return buffer.
+     */
+    public Map<Systems, ArrayList<InputEvent>> getBuffer() {
+        return buffer;
+    }
+
+    /**
      * Adds an InputEvent to the buffer for a specific receiver system.
      * This method is synchronized to ensure thread safety.
      *
