@@ -102,6 +102,9 @@ public class Scheduler implements Runnable {
                 //Send highest-priority event to the Drone
                 InputEvent sendingEvent = this.inputEvents.poll();
                 System.out.println(this.name + ": SENDING --> " + sendingEvent.toString() + " TO: " + Systems.DroneSubsystem);
+
+                ///NEEDS TO CHECK THAT THERE IS AN AVAILABLE DRONE HERE!!!
+
                 this.eventBuffer.addInputEvent(sendingEvent, Systems.DroneSubsystem);
 
                 //Check if there is any event back from the Drone
