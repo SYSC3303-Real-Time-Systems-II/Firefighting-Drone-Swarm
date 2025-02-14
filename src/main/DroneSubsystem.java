@@ -26,12 +26,12 @@ public class DroneSubsystem implements Runnable {
     }
 
     /**
-     * Returns the total travel time of drone to complete one event in minutes.
+     * Returns the arrival time of drone to arrive at a zone,
      * @param event The event sent to the drone subsystem.
-     * @return the total travel time in minutes.
+     * @return the arrival time.
      */
-    public double calculateTotalTravelTime(InputEvent event) {
-        return ((2 * calculateZoneTravelTime(event)) + drone.getACCELERATION_TIME()+ drone.getDECELERATION_TIME() + drone.getDROP_WATER_TIME()) / 60; // Convert to minutes
+    public double calculateArrivalZoneTime(InputEvent event) {
+        return calculateZoneTravelTime(event) + drone.getACCELERATION_TIME(); // Convert to minutes
     }
 
     @Override
@@ -50,13 +50,15 @@ public class DroneSubsystem implements Runnable {
 
                 // Step 3: Arrive at the zone
                 drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as arrived
+                event.setStatus(Status.COMPLETE); // Makes the status complete
+                event.setTime(event.getTime().plusSeconds((long) calculateArrivalZoneTime(event))); // Update time
 
-                ///SEND A MESSAGE TO THE SCHEDULER THAT IT HAS ARRIVED AT THE ZONE
+                System.out.println(drone.getName() + ": COMPLETED EVENT: " + event); // Prints out the time that the drone arrived at zone
+                System.out.println(name + ": SENDING --> " + event.toString() + " TO: " + Systems.Scheduler); // Sends the message back to the Scheduler
+                eventBuffer.addInputEvent(event, Systems.Scheduler); // Puts it the shared buffer with the scheduler
 
                 // Step 4: Drop the water
                 drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as dropping water
-
-                ///NEED A CHECK HERE TO SEE IF THERE ARE PENDING EVENTS
 
                 // Step 5: Heads back to the home base
                 drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as travelling back to the home base
@@ -64,16 +66,6 @@ public class DroneSubsystem implements Runnable {
                 // Step 6: Arrives back at the home base and now ready to be sent to the next zone
                 drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as on route to the zone
 
-                // Step 7: Update event status and time
-                double travelTime = calculateTotalTravelTime(event);
-                event.setStatus(Status.COMPLETE);
-                event.setTime(event.getTime().plusMinutes((long) travelTime)); // Update time
-                event.setMessage(null); // Sets the message back at null
-
-                // Step 8: Send confirmation back to the Scheduler
-                System.out.println(drone.getName() + ": COMPLETED EVENT: " + event);
-                System.out.println(name + ": SENDING --> " + event.toString() + " TO: " + Systems.Scheduler);
-                eventBuffer.addInputEvent(event, Systems.Scheduler);
             } else {
                 System.out.println("[" + systemType + " - " + name + "] No event to handle, retrying...");
                 i--; // Retry the same iteration
