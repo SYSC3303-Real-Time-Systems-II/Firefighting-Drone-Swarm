@@ -27,6 +27,8 @@ class DroneSubsystemTest {
 
         inputEvent.setZone(zone); // Sets the zone of the event
 
-        assertEquals(1.0741788827959047, droneSubsystem.calculateTotalTravelTime(inputEvent)); // Checks that the calculated drone subsystem travel time is the expected value
+        assertEquals(22.162366483877133, droneSubsystem.calculateZoneTravelTime(inputEvent)); // Checks that the calculated drone subsystem zone travel time is the expected value
+
+        assertEquals(22.21336648387713, droneSubsystem.calculateArrivalZoneTime(inputEvent)); // Checks that the calculated drone subsystem arrival time for the zone is the expected value
     }
 }
