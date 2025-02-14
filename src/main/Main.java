@@ -26,8 +26,8 @@ public class Main {
         Thread scheduler_t1 = new Thread(scheduler);
 
         // Initialize and create thread for the DroneSubsystem
-        DroneSubsystem drone = new DroneSubsystem("Drone", eventBuffer);
-        Thread drone_t1 = new Thread(drone);
+        DroneSubsystem droneSubsystem = new DroneSubsystem("DS", eventBuffer);
+        Thread drone_t1 = new Thread(droneSubsystem);
 
         // Start all threads
         fis1_t1.start();

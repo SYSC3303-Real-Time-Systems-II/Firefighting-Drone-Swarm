@@ -4,13 +4,7 @@ public class DroneSubsystem implements Runnable {
     private Systems systemType;
     private Coordinate current_coords;
     private EventBuffer eventBuffer;
-    private DroneState droneState; // Takes care of the state of the drone
-
-
-    private final double ACCELERATION_TIME = 0.051;
-    private final double DECELERATION_TIME = 0.075;
-    private final double TOP_SPEED = 20.8; // meters per second
-    private final double DROP_WATER_TIME = 20.0;
+    private Drone drone; // The drone that will be used to send out to the zones for fire
 
 
     public DroneSubsystem(String name, EventBuffer eventBuffer) {
@@ -18,88 +12,68 @@ public class DroneSubsystem implements Runnable {
         this.systemType = Systems.DroneSubsystem;
         this.eventBuffer = eventBuffer;
         this.current_coords = new Coordinate(0, 0);
-        this.droneState = DroneState.AVAILABLE; // The drone starts with an available state
+        this.drone = new Drone();
     }
 
-    // Returns the time taken to put out fire in minutes
-    public double calculateTotalTravelTime(InputEvent event) {
+    /**
+     * A method used to calculate the travel time to a zone and can also be used to calculate the travel time back from the zone.
+     * @param event The event that is sent to the zone.
+     * @return the travel time of a zone.
+     */
+    public double calculateZoneTravelTime(InputEvent event){
         Coordinate fire_coords = event.getZone().getZoneCenter();
-        double distance = Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2));
-        double travelTime = 2 * (distance / TOP_SPEED); // Both ways
-        double totalSeconds = travelTime + ACCELERATION_TIME + DECELERATION_TIME + DROP_WATER_TIME;
-        return totalSeconds / 60; // Convert to minutes
+        return Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2)) / drone.getTOP_SPEED();
     }
 
     /**
-     * A method used to simulate a delay of time for when the drone has travelled to the zone and back.
-     * @param seconds the time in seconds.
+     * Returns the total travel time of drone to complete one event in minutes.
+     * @param event The event sent to the drone subsystem.
+     * @return the total travel time in minutes.
      */
-    private void sleepFor(double seconds) {
-        try {
-            Thread.sleep((int) (seconds * 1000)); // Convert to milliseconds
-        } catch (InterruptedException e) { // If something when wrong
-            Thread.currentThread().interrupt(); // Gets the interrupt
-            System.err.println("Drone interrupted during sleep."); // Prints the error
-        }
-    }
-
-    /**
-     * This method deals with the changing of the state for the drone. It handles when a drone goes from available to on route
-     * to the fire zone, when it has arrived, when it's dropping the water and traveling back to the station.
-     * @param event the event that is passed to the state machine.
-     */
-    public void handleDroneState(InputEvent event) {
-        switch(droneState){
-            case AVAILABLE: // When the drone is available
-                System.out.println(name + ": Traveling to the to the fire zone."); // Prints out a message that the drone is on its way to the fire zone
-                droneState = DroneState.ON_ROUTE; // The drone becomes on route to the fire zone
-                break;
-            case ON_ROUTE: // When the drone is on route
-                System.out.println(name + ": Arrived at fire zone."); // Prints out a message that the drone has arrived at the fire zone
-                droneState = DroneState.ARRIVED; // The drone has now arrived
-                break;
-            case ARRIVED: // When the drone has arrived
-                System.out.println(name + ": Dropping water."); // Prints out a message that the drone is dropping water
-                droneState = DroneState.DROPPING_WATER; // The drone is dropping water now
-                break;
-            case DROPPING_WATER: // When the drone is dropping water
-                System.out.println(name + ": Water dropped, returning to base."); // Prints out a message saying that the watter was dropped and that it's returning to base
-                droneState = DroneState.RETURNING_TO_BASE; // The drone is returning to base now
-                break;
-            case RETURNING_TO_BASE: // The last case where the drone is returning
-                System.out.println(name + ": Arrived back at base and ready for next event."); // Prints out a message saying that the drone has arrived back and is now ready for the next event
-                droneState = DroneState.AVAILABLE; // The drone becomes available again
-                break;
-        }
+    public double calculateTotalTravelTime(InputEvent event) {
+        return ((2 * calculateZoneTravelTime(event)) + drone.getACCELERATION_TIME()+ drone.getDECELERATION_TIME() + drone.getDROP_WATER_TIME()) / 60; // Convert to minutes
     }
 
     @Override
     public void run() {
         int i = 0;
         while (i < 10) {
-            // Step 1: Read from the Event Buffer
+            // Step 1: Read from the Event Buffer sent from scheduler
             InputEvent event = eventBuffer.getInputEvent(this.systemType);
-            if (event != null && droneState == DroneState.AVAILABLE) { // The drone must be available
+            if (event != null && drone.getDroneState() == DroneState.AVAILABLE) { // Checks if the event is not null and that the drone is available
+                System.out.println(name + ": HANDLING EVENT: " + event); //Prints a message saying that the drone subsystem will handel the event
 
-                // Step 1: Simulate handling the fire meaning that the drone will begin to handel the event
-                System.out.println(this.name + ": HANDLING EVENT: " + event);
-                handleDroneState(event); // Calls the state transition function with the event
+                // Step 2: Simulate handling the fire meaning that the drone will begin to handle the events
+                System.out.println(drone.getName() + ": Available to handle event: " + event); // Prints that the drone that was found available to handle the event
+                drone.setLocalTime(event.getTime()); // Sets the event as the local time for the drone
+                drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as on route to the zone
 
-                // Step 2: Comes back to the run function after it has transitioned through all state
-                while(droneState != DroneState.AVAILABLE){
-                    handleDroneState(event); // Calls the state transition function with the event
-                }
+                // Step 3: Arrive at the zone
+                drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as arrived
 
-                // Step 3: Update event status and time
+                ///SEND A MESSAGE TO THE SCHEDULER THAT IT HAS ARRIVED AT THE ZONE
+
+                // Step 4: Drop the water
+                drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as dropping water
+
+                ///NEED A CHECK HERE TO SEE IF THERE ARE PENDING EVENTS
+
+                // Step 5: Heads back to the home base
+                drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as travelling back to the home base
+
+                // Step 6: Arrives back at the home base and now ready to be sent to the next zone
+                drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as on route to the zone
+
+                // Step 7: Update event status and time
                 double travelTime = calculateTotalTravelTime(event);
                 event.setStatus(Status.COMPLETE);
                 event.setTime(event.getTime().plusMinutes((long) travelTime)); // Update time
+                event.setMessage(null); // Sets the message back at null
 
-                // Step 4: Send confirmation back to the Scheduler
-                System.out.println(this.name + ": COMPLETED EVENT: " + event);
-                System.out.println(this.name + ": SENDING --> " + event.toString() + " TO: " + Systems.Scheduler);
+                // Step 8: Send confirmation back to the Scheduler
+                System.out.println(drone.getName() + ": COMPLETED EVENT: " + event);
+                System.out.println(name + ": SENDING --> " + event.toString() + " TO: " + Systems.Scheduler);
                 eventBuffer.addInputEvent(event, Systems.Scheduler);
-
             } else {
                 System.out.println("[" + systemType + " - " + name + "] No event to handle, retrying...");
                 i--; // Retry the same iteration

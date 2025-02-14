@@ -119,7 +119,7 @@ public class FireIncidentSubsystem implements Runnable {
      */
     @Override
     public void run() {
-        int i = 0;
+        int i = 1;
 
         //Send the zone package to the Scheduler
         RelayPackage zonePackage = new RelayPackage("ZONE_PKG_1", Systems.Scheduler, null, zonesList);
@@ -127,7 +127,7 @@ public class FireIncidentSubsystem implements Runnable {
         System.out.println(this.name + ": SENDING --> " + zonePackage.getRelayPackageID() + " TO: " + zonePackage.getReceiverSystem());
 
             //Loop to send Input Events to Schduler and receive acknowledgments back
-        while (i < 10) {
+        while (i <= 10) {
 
             //Send input events to the Scheduler (if available)
             if (!this.inputEvents.isEmpty()) {

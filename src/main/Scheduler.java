@@ -13,7 +13,7 @@ public class Scheduler implements Runnable {
     private Map<Integer, Zone> zones;                   // Map of zones, keyed by zone ID
     private RelayBuffer relayBuffer;                    // Buffer for communication with the FireIncidentSubsystem
     private EventBuffer eventBuffer;                    // Buffer for communication with the DroneSubsystem
-
+    private ArrayList<Drone> drones;                    // The list of drones for the scheduler to choose from
 
     /**
      * Constructs a Scheduler object.
@@ -103,9 +103,7 @@ public class Scheduler implements Runnable {
                 InputEvent sendingEvent = this.inputEvents.poll();
                 System.out.println(this.name + ": SENDING --> " + sendingEvent.toString() + " TO: " + Systems.DroneSubsystem);
 
-                ///NEEDS TO CHECK THAT THERE IS AN AVAILABLE DRONE HERE!!!
-
-                this.eventBuffer.addInputEvent(sendingEvent, Systems.DroneSubsystem);
+                this.eventBuffer.addInputEvent(sendingEvent, Systems.DroneSubsystem); // Sends the event to the drone sub-system
 
                 //Check if there is any event back from the Drone
                 InputEvent receivedEvent = eventBuffer.getInputEvent(this.systemType);

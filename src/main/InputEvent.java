@@ -16,6 +16,7 @@ public class InputEvent {
     private EventType event_type;           // Type of the event (e.g., DRONE_REQUEST, FIRE_DETECTED)
     private Severity severity;              // Severity of the event (e.g., High, Moderate, Low)
     private Status status;                  // Current status of the event (e.g., UNRESOLVED, COMPLETE)
+    private String message;                 // An optional that will be sued to send back to the scheduler from the drone subsystem that the drone has arrived
 
     /**
      * Constructs an InputEvent object.
@@ -33,6 +34,7 @@ public class InputEvent {
         this.event_type = EventType.valueOf(event_type);
         this.severity = Severity.valueOf(severity);
         this.status = status;
+        this.message = null;
     }
     /**
      * Returns the type of the event.
@@ -150,6 +152,18 @@ public class InputEvent {
     public void setSeverity(Severity severity) {
         this.severity = severity;
     }
+
+    /**
+     * Sets the message of the event.
+     * @param message The message for the event.
+     */
+    public void setMessage(String message) { this.message = message; }
+
+    /**
+     * Gets the message of the event.
+     * @return the message of the event.
+     */
+    public String getMessage() { return message; }
 
     /**
      * Returns a string representation of the event.
