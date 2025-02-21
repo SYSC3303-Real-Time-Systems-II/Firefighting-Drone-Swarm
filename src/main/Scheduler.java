@@ -102,6 +102,14 @@ public class Scheduler implements Runnable {
     }
 
     /**
+     * Gets the state of the scheduler.
+     * @return the state of the scheduler.
+     */
+    public SchedulerState getSchedulerState() {
+        return schedulerState;
+    }
+
+    /**
      * The run method is executed when the thread starts.
      * It reads events from the RelayBuffer, prioritizes them, and sends them to the DroneSubsystem.
      * It also handles confirmation messages from the DroneSubsystem and sends them back to the FireIncidentSubsystem.

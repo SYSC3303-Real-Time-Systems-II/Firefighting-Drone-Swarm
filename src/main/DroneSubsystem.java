@@ -47,6 +47,14 @@ public class DroneSubsystem implements Runnable {
     }
 
     /**
+     * Gets the state of the drone subsystem.
+     * @return the state of drone subsystem.
+     */
+    public DroneSubsystemState getDroneSubsystemState() {
+        return droneSubsystemState;
+    }
+
+    /**
      * A method used to calculate the travel time to a zone and can also be used to calculate the travel time back from the zone.
      * @param event The event that is sent to the zone.
      * @return the travel time of a zone.
