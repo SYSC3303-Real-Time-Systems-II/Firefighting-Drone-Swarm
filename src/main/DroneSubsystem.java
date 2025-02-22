@@ -37,7 +37,7 @@ public class DroneSubsystem implements Runnable {
             case SENDING_EVENT_TO_SCHEDULER:
                 event.setStatus(Status.COMPLETE); // Makes the status complete
                 event.setTime(event.getTime().plusSeconds((long) calculateArrivalZoneTime(event))); // Update time
-                System.out.println(drone.getName() + ": COMPLETED EVENT: " + event); // Prints out the time that the drone arrived at zone
+                System.out.println(drone.getName() + ": COMPLETED EVENT (ARRIVED AT ZONE): " + event); // Prints out the time that the drone arrived at zone
                 System.out.println(name + ": SENDING EVENT TO SCHEDULER --> " + event.toString()); // Sends the message back to the Scheduler
                 drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as arrived
                 eventBuffer.addInputEvent(event, Systems.Scheduler); // Puts it the shared buffer with the scheduler
