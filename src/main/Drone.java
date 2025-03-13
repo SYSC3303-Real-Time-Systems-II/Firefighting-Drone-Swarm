@@ -19,6 +19,8 @@ public class Drone {
     private DroneState droneState; // This will be used for the drones state
     private static int nextID = 1; // Will be used to uniquely increment the ID
     private static LocalTime localTime; // Will have the local time start of the event
+    private Coordinate current_coords;
+
 
     /**
      * The constructor of the done system assigns a new ID and the state as available to start.
@@ -28,6 +30,15 @@ public class Drone {
         this.name = "Drone" + ID;
         this.droneState = DroneState.AVAILABLE;
         this.localTime = null;
+        this.current_coords = new Coordinate(0, 0);
+    }
+
+    /**
+     * Gets the current_coords of the drone.
+     * @return the current_coords of drone.
+     */
+    public Coordinate getCurrent_coords() {
+        return current_coords;
     }
 
     /**
@@ -52,6 +63,14 @@ public class Drone {
      */
     public void setLocalTime(LocalTime localTime) {
         this.localTime = localTime;
+    }
+
+    /**
+     * Sets the setCurrent_coords.
+     * @param new_coords new coords.
+     */
+    public void setCurrent_coords(Coordinate new_coords) {
+        this.current_coords = new_coords;
     }
 
     /**
@@ -100,13 +119,38 @@ public class Drone {
     }
 
     /**
+     * A method used to calculate the travel time to a zone and can also be used to calculate the travel time back from the zone.
+     * @param event The event that is sent to the zone.
+     * @return the travel time of a zone.
+     */
+    public double calculateZoneTravelTime(InputEvent event){
+        Coordinate fire_coords = event.getZone().getZoneCenter();
+        return Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2)) / getTOP_SPEED();
+    }
+
+
+    /**
+     * Returns the arrival time of drone to arrive at a zone,
+     * @param event The event sent to the drone subsystem.
+     * @return the arrival time.
+     */
+    public double calculateArrivalZoneTime(InputEvent event) {
+        return calculateZoneTravelTime(event) + getACCELERATION_TIME(); // Convert to minutes
+    }
+
+    /**
      * This method deals with the changing of the state for the drone. It handles when a drone goes from available to on route
      * to the fire zone, when it has arrived, when it's dropping the water and traveling back to the station.
      */
-    public void handleDroneState(double travelZoneTime, int zoneID) {
+    public void handleDroneState(InputEvent event) {
+
+        double travelZoneTime = calculateZoneTravelTime(event);
+        int zoneID = event.getZoneId();
+
         switch(droneState){
             case AVAILABLE: // When the drone is available
                 System.out.println(name + ": TRAVELING TO ZONE: " + zoneID +  " : AT TIME: " + localTime); // Prints out a message that the drone is on its way to the zone and the time it traveled
+                System.out.println(name + "AVAILABLE ***************************** CURRENT LOCATION: " + getCurrent_coords());
                 localTime = localTime.plusSeconds((long) ACCELERATION_TIME); // Adds the local time
                 //sleepFor(ACCELERATION_TIME); // Simulates the acceleration time
                 droneState = DroneState.ON_ROUTE; // The drone becomes on route to the fire zone
@@ -118,6 +162,8 @@ public class Drone {
                 droneState = DroneState.ARRIVED; // The drone has now arrived
                 break;
             case ARRIVED: // When the drone has arrived
+                setCurrent_coords(event.getZone().getZoneCenter());
+                System.out.println(name + "ARRIVED ***************************** CURRENT LOCATION: " + getCurrent_coords());
                 System.out.println(name + ": DROPPING WATER: AT TIME: " + localTime); // Prints out a message that the drone is dropping water
                 localTime = localTime.plusSeconds((long) DROP_WATER_TIME); // Adds the local time
                 //sleepFor(DROP_WATER_TIME); // Simulates the water drop time
@@ -133,6 +179,10 @@ public class Drone {
                 localTime = localTime.plusSeconds((long) travelZoneTime - 4); // Adds the local time
                 //sleepFor(travelZoneTime - 4); // Simulates the travel zone time
                 System.out.println(name + ": ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + localTime); // Prints out a message saying that the drone has arrived back and is now ready for the next event
+
+                setCurrent_coords(new Coordinate(0,0));
+                System.out.println(name + "HOME ***************************** CURRENT LOCATION: " + getCurrent_coords());
+
                 droneState = DroneState.AVAILABLE; // The drone becomes available again
                 break;
         }
