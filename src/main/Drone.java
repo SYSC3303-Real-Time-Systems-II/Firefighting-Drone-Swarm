@@ -1,4 +1,5 @@
 import java.time.*;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * This class is the drone class which has a unique identifier, a name, and a state. The drone is coordinated by the drone subsystem
@@ -128,7 +129,6 @@ public class Drone {
         return Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2)) / getTOP_SPEED();
     }
 
-
     /**
      * Returns the arrival time of drone to arrive at a zone,
      * @param event The event sent to the drone subsystem.
@@ -153,14 +153,23 @@ public class Drone {
                 System.out.println(name + "AVAILABLE ***************************** CURRENT LOCATION: " + getCurrent_coords());
                 localTime = localTime.plusSeconds((long) ACCELERATION_TIME); // Adds the local time
                 //sleepFor(ACCELERATION_TIME); // Simulates the acceleration time
-                droneState = DroneState.ON_ROUTE; // The drone becomes on route to the fire zone
+                droneState = DroneState.ASCENDING; // The drone becomes on route to the fire zone
                 break;
-            case ON_ROUTE: // When the drone is on route
-                localTime = localTime.plusSeconds((long) travelZoneTime); // Adds the local time
-                //sleepFor(travelZoneTime); // Simulates the travel zone time
-                System.out.println(name + ": ARRIVED AT ZONE: " + zoneID +  " : AT TIME: " + localTime); // Prints out a message that the drone has arrived at the fire zone
-                droneState = DroneState.ARRIVED; // The drone has now arrived
+//            case ON_ROUTE: // When the drone is on route
+//                localTime = localTime.plusSeconds((long) travelZoneTime); // Adds the local time
+//                //sleepFor(travelZoneTime); // Simulates the travel zone time
+//                System.out.println(name + ": ARRIVED AT ZONE: " + zoneID +  " : AT TIME: " + localTime); // Prints out a message that the drone has arrived at the fire zone
+//                droneState = DroneState.ARRIVED; // The drone has now arrived
+//                break;
+            case ASCENDING:
+                sleepFor(ACCELERATION_TIME);
+                System.out.println(name + ": ASCENDING AT TIME: " + localTime);
+                droneState = DroneState.CRUISING;
                 break;
+            case CRUISING:
+                sleepFor(travelZoneTime);
+                System.out.println(name + ": CRUISING TO ZONE: " + zoneID +  " : AT TIME: " + localTime);
+                droneState = DroneState.ARRIVED;
             case ARRIVED: // When the drone has arrived
                 setCurrent_coords(event.getZone().getZoneCenter());
                 System.out.println(name + "ARRIVED ***************************** CURRENT LOCATION: " + getCurrent_coords());
@@ -179,7 +188,6 @@ public class Drone {
                 localTime = localTime.plusSeconds((long) travelZoneTime - 4); // Adds the local time
                 //sleepFor(travelZoneTime - 4); // Simulates the travel zone time
                 System.out.println(name + ": ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + localTime); // Prints out a message saying that the drone has arrived back and is now ready for the next event
-
                 setCurrent_coords(new Coordinate(0,0));
                 System.out.println(name + "HOME ***************************** CURRENT LOCATION: " + getCurrent_coords());
 
