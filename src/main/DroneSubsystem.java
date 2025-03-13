@@ -1,3 +1,4 @@
+import java.sql.SQLOutput;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,8 +8,9 @@ public class DroneSubsystem implements Runnable {
     private Systems systemType;
     private EventBuffer eventBuffer;
     private DroneSubsystemState droneSubsystemState; // Will have the state of the drone subsystem which is receiving and sending to the scheduler
-    private Map<Drone, InputEvent> droneEventList;
     private Drone drone; // The drone that will be used to send out to the zones for fire
+    private Map<Drone, Coordinate> droneCoordinateMap;
+
 
     public DroneSubsystem(String name, EventBuffer eventBuffer) {
         this.name = name;
@@ -16,10 +18,27 @@ public class DroneSubsystem implements Runnable {
         this.eventBuffer = eventBuffer;
         this.droneSubsystemState = DroneSubsystemState.WAITING;
         this.drone = new Drone();
-        this.droneEventList = new HashMap<>();
-        droneEventList.put(drone, null);
-
+        this.droneCoordinateMap = new HashMap<>();
+        this.droneCoordinateMap.put(drone,drone.getCurrent_coords());
     }
+
+
+    public Drone chooseDroneAlgorithm(InputEvent event){
+        Coordinate coords = event.getZone().getZoneCenter();
+        Drone closestDrone = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (Map.Entry<Drone, Coordinate> entry : droneCoordinateMap.entrySet()){
+            Coordinate entryDrone_coords = entry.getKey().getCurrent_coords();
+            double distance = Math.sqrt(Math.pow(coords.getX() - entryDrone_coords.getX(), 2) + Math.pow(coords.getY() - entryDrone_coords.getY(), 2));
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestDrone = entry.getKey();
+            }
+        }
+        return closestDrone;
+    }
+
 
     /**
      * Handles the state machine for the drone subsystem class which is dealing with the state of sending and receiving an input event
@@ -34,14 +53,15 @@ public class DroneSubsystem implements Runnable {
                 droneSubsystemState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER; // Makes the state as received the event from the scheduler
                 break;
             case RECEIVED_EVENT_FROM_SCHEDULER:
-                System.out.println(drone.getName() + ": AVAILABLE TO HANDLE --> : " + event); // Prints that the drone that was found available to handle the event
-                drone.setLocalTime(event.getTime()); // Sets the event as the local time for the drone
+                Drone droneChosen = chooseDroneAlgorithm(event);
 
+                System.out.println(droneChosen.getName() + ": AVAILABLE TO HANDLE --> : " + event); // Prints that the drone that was found available to handle the event
+                droneChosen.setLocalTime(event.getTime()); // Sets the event as the local time for the drone
                 // Calls the state transition function of the drone to be set as on route to the zone
-                drone.handleDroneState(event);
-
+                droneChosen.handleDroneState(event);
                 droneSubsystemState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER; // Makes the state as sending the event to the scheduler
                 break;
+
             case SENDING_EVENT_TO_SCHEDULER:
                 event.setStatus(Status.COMPLETE); // Makes the status complete
                 event.setTime(event.getTime().plusSeconds((long) drone.calculateArrivalZoneTime(event))); // Update time

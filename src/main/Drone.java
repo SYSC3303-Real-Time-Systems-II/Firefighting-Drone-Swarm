@@ -150,7 +150,7 @@ public class Drone {
         switch(droneState){
             case AVAILABLE: // When the drone is available
                 System.out.println(name + ": TRAVELING TO ZONE: " + zoneID +  " : AT TIME: " + localTime); // Prints out a message that the drone is on its way to the zone and the time it traveled
-                System.out.println(name + "AVAILABLE ***************************** CURRENT LOCATION: " + getCurrent_coords());
+                //System.out.println(name + "AVAILABLE ***************************** CURRENT LOCATION: " + getCurrent_coords());
                 localTime = localTime.plusSeconds((long) ACCELERATION_TIME); // Adds the local time
                 //sleepFor(ACCELERATION_TIME); // Simulates the acceleration time
                 droneState = DroneState.ON_ROUTE; // The drone becomes on route to the fire zone
@@ -163,7 +163,7 @@ public class Drone {
                 break;
             case ARRIVED: // When the drone has arrived
                 setCurrent_coords(event.getZone().getZoneCenter());
-                System.out.println(name + "ARRIVED ***************************** CURRENT LOCATION: " + getCurrent_coords());
+                //System.out.println(name + "ARRIVED ***************************** CURRENT LOCATION: " + getCurrent_coords());
                 System.out.println(name + ": DROPPING WATER: AT TIME: " + localTime); // Prints out a message that the drone is dropping water
                 localTime = localTime.plusSeconds((long) DROP_WATER_TIME); // Adds the local time
                 //sleepFor(DROP_WATER_TIME); // Simulates the water drop time
@@ -181,7 +181,7 @@ public class Drone {
                 System.out.println(name + ": ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + localTime); // Prints out a message saying that the drone has arrived back and is now ready for the next event
 
                 setCurrent_coords(new Coordinate(0,0));
-                System.out.println(name + "HOME ***************************** CURRENT LOCATION: " + getCurrent_coords());
+                //System.out.println(name + "HOME ***************************** CURRENT LOCATION: " + getCurrent_coords());
 
                 droneState = DroneState.AVAILABLE; // The drone becomes available again
                 break;
