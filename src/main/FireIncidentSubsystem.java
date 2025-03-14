@@ -124,6 +124,7 @@ public class FireIncidentSubsystem implements Runnable {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
         try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
             objectStream.writeObject(relayPackage);  // Write the RelayPackage object to the stream
+            objectStream.flush(); // Flushes after it writes the serialized array of bytes
         }
         return byteStream.toByteArray();  // Return the byte array
     }
@@ -131,10 +132,12 @@ public class FireIncidentSubsystem implements Runnable {
     /**
      * This is a method used to deserialize a relay package from the Scheduler. This is again helpful in keeping the
      * object and its attributes that was sent.
-     * @param byteArray The serialized bytes of array as the relay package to be deserialized.
+     * @param receivePacket The packets to be received and deserialized into an InputEvent object.
+     * @return the relay package that was received from scheduler.
+     *
      */
-    private RelayPackage deserializeRelayPackage(byte[] byteArray) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(byteArray);
+    private RelayPackage deserializeRelayPackage(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength());
         try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
             return (RelayPackage) objectStream.readObject();  // Read the object from the byte array
         }
@@ -147,8 +150,9 @@ public class FireIncidentSubsystem implements Runnable {
     private void sendUDPMessage(RelayPackage inputEventPackage){
         try{
             byte[] message = serializeRelayPackage(inputEventPackage);  // Serializes the RelayPackage by passing it to the method
+
             DatagramPacket sendPacket = new DatagramPacket(message, message.length, InetAddress.getLocalHost(), 5000); // The packet that will be sent to the scheduler which has a port of 5000
-            System.out.println(this.name + ": SENDING --> " + inputEventPackage.getRelayPackageID() + " TO: " + inputEventPackage.getReceiverSystem());
+            System.out.println(this.name + ": SENDING --> " + inputEventPackage.getRelayPackageID() + " TO: " + Systems.Scheduler);
             sendReceiveSocket.send(sendPacket); // Sends the packet to the scheduler
         }catch(IOException e){
             e.printStackTrace();
@@ -160,14 +164,12 @@ public class FireIncidentSubsystem implements Runnable {
      */
     private void receiveUDPMessage(){
         try{
-            byte[] receiveData = new byte[100];
+            byte[] receiveData = new byte[6000];
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // The received data packet that weill be received from teh scheduler
             sendReceiveSocket.receive(receivePacket); // Receives the packet
 
-            byte[] data = receivePacket.getData(); // Gets the serialized bytes of array
-
             // Deserialize the byte array into a RelayPackage object
-            RelayPackage receivedPackage = deserializeRelayPackage(data);
+            RelayPackage receivedPackage = deserializeRelayPackage(receivePacket);
 
             System.out.println(this.name + ": Received <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.Scheduler); // Prints out the confirmation message that it got the data from the scheduler
         }catch (IOException | ClassNotFoundException e){

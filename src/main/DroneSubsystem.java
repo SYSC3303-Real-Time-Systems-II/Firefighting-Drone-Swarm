@@ -25,7 +25,7 @@ public class DroneSubsystem implements Runnable {
     }
 
     /**
-     * This is a method used to serialize an input event to be sent to the drone subsystem. This will help in keeping the object
+     * This is a method used to serialize an input event to be sent to the scheduler as a confirmation. This will help in keeping the object
      * and its attributes.
      *
      * @param inputEvent the input event being serialized.
@@ -35,6 +35,7 @@ public class DroneSubsystem implements Runnable {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
         try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
             objectStream.writeObject(inputEvent);  // Write the RelayPackage object to the stream
+            objectStream.flush(); // Flushes the object stream
         }
         return byteStream.toByteArray();  // Return the byte array
     }
@@ -42,12 +43,12 @@ public class DroneSubsystem implements Runnable {
     /**
      * This is a method used to deserialize an input event from the drone subsystem. This is again helpful in keeping the
      * object and its attributes that was sent.
-     * @param byteArray The serialized bytes of array as the input event to be deserialized.
+     * @param receivePacket The datagram packet that is to be deserialized and returned as an InputEvent Object
      * @return InputEvent that was received from the drone subsystem.
      */
-    private InputEvent deserializeInputEvent(byte[] byteArray) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(byteArray);
-        try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
+    private InputEvent deserializeInputEvent(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength()); // Creates an array input stream from the datagram packet
+        try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) { // Creates an inout stream object from the array of input stream bytes as a wrapper
             return (InputEvent) objectStream.readObject();  // Read the object from the byte array
         }
     }
@@ -60,14 +61,12 @@ public class DroneSubsystem implements Runnable {
      */
     private InputEvent receiveUDPMessageSCHD() {
         try {
-            byte[] receiveData = new byte[100];
+            byte[] receiveData = new byte[6000]; // Creates an array of bytes for the received packet
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // Receive a packet from the Scheduler
             receiveAndSendDDSSocket.receive(receivePacket); // Receives the packet from the Scheduler
 
-            byte[] data = receivePacket.getData(); // Get the serialized array of bytes from the Scheduler
-
             // Deserialize the byte array into an InputEvent object
-            InputEvent inputEvent = deserializeInputEvent(data);
+            InputEvent inputEvent = deserializeInputEvent(receivePacket);
 
             System.out.println(name + ": RECEIVED EVENT FROM SCHEDULER --> " + inputEvent.toString()); // Prints a message saying that the drone subsystem has received an event from the scheduler
             System.out.println(name + ": HANDLING EVENT: " + inputEvent); // Prints a message saying that the drone subsystem will handel the event
@@ -164,7 +163,7 @@ public class DroneSubsystem implements Runnable {
     }
 
     /**
-     * A main method that will be used to run the therad.
+     * A main method that will be used to run the thread.
      */
 
     public static void main(String[] args) {

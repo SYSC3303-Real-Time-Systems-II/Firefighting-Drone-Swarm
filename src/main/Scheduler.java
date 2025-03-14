@@ -79,6 +79,7 @@ public class Scheduler implements Runnable {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
         try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
             objectStream.writeObject(relayPackage);  // Write the RelayPackage object to the stream
+            objectStream.flush(); // Flushes the object stream
         }
         return byteStream.toByteArray();  // Return the byte array
     }
@@ -94,6 +95,7 @@ public class Scheduler implements Runnable {
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
         try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
             objectStream.writeObject(inputEvent);  // Write the RelayPackage object to the stream
+            objectStream.flush(); // Flushes the object stream
         }
         return byteStream.toByteArray();  // Return the byte array
     }
@@ -101,11 +103,11 @@ public class Scheduler implements Runnable {
     /**
      * This is a method used to deserialize an input event from the drone subsystem. This is again helpful in keeping the
      * object and its attributes that was sent.
-     * @param byteArray The serialized bytes of array as the input event to be deserialized.
+     * @param receivePacket The packets to be received and deserialized into an InputEvent object
      * @return InputEvent that was received from the drone subsystem.
      */
-    private InputEvent deserializeInputEvent(byte[] byteArray) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(byteArray);
+    private InputEvent deserializeInputEvent(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength());
         try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
             return (InputEvent) objectStream.readObject();  // Read the object from the byte array
         }
@@ -114,11 +116,11 @@ public class Scheduler implements Runnable {
     /**
      * This is a method used to deserialize a relay package from the Scheduler. This is again helpful in keeping the
      * object and its attributes that was sent.
-     * @param byteArray The serialized bytes of array as the relay package to be deserialized.
+     *  @param receivePacket The packets to be received and deserialized into a RelayPackage object
      * @return relay package that was received from the FIS.
      */
-    private RelayPackage deserializeRelayPackage(byte[] byteArray) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(byteArray);
+    private RelayPackage deserializeRelayPackage(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength());
         try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
             return (RelayPackage) objectStream.readObject();  // Read the object from the byte array
 
@@ -130,15 +132,11 @@ public class Scheduler implements Runnable {
      */
     private void receiveUDPMessageFIS(){
         try{
-            byte[] receiveData = new byte[100];
+            byte[] receiveData = new byte[6000];
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // Receive a packet from the FireIncidentSubsystem
             receiveAndSendFISSocket.receive(receivePacket); // Receives the packet from the FIS
 
-            byte[] data = receivePacket.getData(); // Get the serialized array of bytes from the FIS
-
-            // Deserialize the byte array into a RelayPackage object
-
-            RelayPackage receivedPackage = deserializeRelayPackage(data);
+            RelayPackage receivedPackage = deserializeRelayPackage(receivePacket);
 
             System.out.println(receivedPackage.getRelayPackageID());  // THE PROBLEM IS FUCKING HERE
 
@@ -197,14 +195,12 @@ public class Scheduler implements Runnable {
      */
     private void receiveUDPMessageDSS(){
         try {
-            byte[] receiveData = new byte[100];
+            byte[] receiveData = new byte[6000];
             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // The packet to be received from the drone subsystem
             receiveAndSendDSSSocket.receive(receivePacket); // Receives the packet from the drone subsystem
 
-            byte[] data = receivePacket.getData(); // Get the serialized array of bytes from the drone subsystem
-
             // Deserialize the byte array into a InputEvent object
-            InputEvent receivedInput = deserializeInputEvent(data);
+            InputEvent receivedInput = deserializeInputEvent(receivePacket);
 
             System.out.println(this.name + ": RECEIVED EVENT <-- " + receivedInput.toString() + " FROM: " + Systems.DroneSubsystem);
 
