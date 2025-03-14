@@ -138,11 +138,9 @@ public class Scheduler implements Runnable {
 
             // Deserialize the byte array into a RelayPackage object
 
-            System.out.println("BALLS");
-
             RelayPackage receivedPackage = deserializeRelayPackage(data);
 
-            System.out.println(receivedPackage.getRelayPackageID() + ": BALLS");  // THE PROBLEM IS FUCKING HERE
+            System.out.println(receivedPackage.getRelayPackageID());  // THE PROBLEM IS FUCKING HERE
 
             // Check for RelayPackage from FireIncidentSubsystem
             if (receivedPackage.getRelayPackageID().contains("ZONE_PKG")) { // If a zone package was received from the fire incident subsystem
