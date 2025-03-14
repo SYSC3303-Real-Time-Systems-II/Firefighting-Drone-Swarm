@@ -1,3 +1,4 @@
+import java.io.Serializable;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
@@ -6,7 +7,7 @@ import java.time.format.DateTimeFormatter;
  * It contains details such as the time of the event, the zone where it occurred,
  * the type of event, its severity, and its current status.
  */
-public class InputEvent {
+public class InputEvent implements Serializable {
     // Formatter for parsing and displaying time
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
