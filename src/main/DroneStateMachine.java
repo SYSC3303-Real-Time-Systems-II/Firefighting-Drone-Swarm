@@ -1,12 +1,12 @@
 interface DroneBaseState{
-    void hande(DroneBaseState context);
+    void handle(DroneBaseState context);
     void addNewTask(InputEvent event);
 }
 
 class InBaseState implements DroneBaseState {
 
     @Override
-    public void hande(DroneBaseState context) {
+    public void handle(DroneBaseState context) {
 
     }
 
@@ -21,7 +21,7 @@ class InBaseState implements DroneBaseState {
 class InFieldState implements DroneBaseState{
 
     @Override
-    public void hande(DroneBaseState context) {
+    public void handle(DroneBaseState context) {
 
     }
 
