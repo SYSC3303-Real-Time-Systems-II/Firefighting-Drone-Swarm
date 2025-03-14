@@ -27,8 +27,6 @@ public class Drone implements Runnable{
     private InputEvent currentEvent;
     private InputEvent completedEvent;
 
-
-
     /**
      * The constructor of the done system assigns a new ID and the state as available to start.
      */
@@ -122,45 +120,6 @@ public class Drone implements Runnable{
     }
 
     /**
-     * This method deals with the changing of the state for the drone. It handles when a drone goes from available to on route
-     * to the fire zone, when it has arrived, when it's dropping the water and traveling back to the station.
-     */
-//    public void handleDroneState(double travelZoneTime, int zoneID) {
-//        switch(droneState){
-//            case AVAILABLE: // When the drone is available
-//                System.out.println(name + ": TRAVELING TO ZONE: " + zoneID +  " : AT TIME: " + localTime); // Prints out a message that the drone is on its way to the zone and the time it traveled
-//                localTime = localTime.plusSeconds((long) ACCELERATION_TIME); // Adds the local time
-//                //sleepFor(ACCELERATION_TIME); // Simulates the acceleration time
-//                droneState = DroneState.ON_ROUTE; // The drone becomes on route to the fire zone
-//                break;
-//            case ON_ROUTE: // When the drone is on route
-//                localTime = localTime.plusSeconds((long) travelZoneTime); // Adds the local time
-//                //sleepFor(travelZoneTime); // Simulates the travel zone time
-//                System.out.println(name + ": ARRIVED AT ZONE: " + zoneID +  " : AT TIME: " + localTime); // Prints out a message that the drone has arrived at the fire zone
-//                droneState = DroneState.ARRIVED; // The drone has now arrived
-//                break;
-//            case ARRIVED: // When the drone has arrived
-//                System.out.println(name + ": DROPPING WATER: AT TIME: " + localTime); // Prints out a message that the drone is dropping water
-//                localTime = localTime.plusSeconds((long) DROP_WATER_TIME); // Adds the local time
-//                //sleepFor(DROP_WATER_TIME); // Simulates the water drop time
-//                droneState = DroneState.DROPPING_WATER; // The drone is dropping water now
-//                break;
-//            case DROPPING_WATER: // When the drone is dropping water
-//                System.out.println(name + ": WATER DROPPED, RETURNING TO BASE: AT TIME: " + localTime); // Prints out a message saying that the watter was dropped and that it's returning to base
-//                localTime = localTime.plusSeconds((long) DECELERATION_TIME); // Adds the local time
-//                //sleepFor(DECELERATION_TIME); // Simulates the deceleration time
-//                droneState = DroneState.RETURNING_TO_BASE; // The drone is returning to base now
-//                break;
-//            case RETURNING_TO_BASE: // The last case where the drone is returning
-//                localTime = localTime.plusSeconds((long) travelZoneTime - 4); // Adds the local time
-//                //sleepFor(travelZoneTime - 4); // Simulates the travel zone time
-//                System.out.println(name + ": ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + localTime); // Prints out a message saying that the drone has arrived back and is now ready for the next event
-//                droneState = DroneState.AVAILABLE; // The drone becomes available again
-//                break;
-//        }
-//    }
-
-    /**
      * Gets the ID of the drone.
      * @return drone ID.
      */
@@ -176,7 +135,9 @@ public class Drone implements Runnable{
     }
 
     public InputEvent getCompletedEvent() {
-        return completedEvent;
+        synchronized (this) {
+            return completedEvent;
+        }
     }
 
     /**
@@ -190,7 +151,7 @@ public class Drone implements Runnable{
                 synchronized (this) {
                     while (assignedEvent == null) {
                         try {
-                            System.out.println(name + "***************  WAITING FOR EVENT");
+                            System.out.println(name + "WAITING FOR EVENT");
                             wait();
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
@@ -198,7 +159,7 @@ public class Drone implements Runnable{
                     }
                     currentEvent = assignedEvent;
                 }
-                System.out.println(name + "&&&&&&&&&&&&&&&& GOT EVENT" + currentEvent);
+                System.out.println(name + " GOT EVENT" + currentEvent);
                 setLocalTime(currentEvent.getTime());
                 System.out.println(name + ": TRAVELING TO ZONE: " + currentEvent.getZoneId() + " : AT TIME: " + localTime); // Prints out a message that the drone is on its way to the zone and the time it traveled
                 localTime = localTime.plusSeconds((long) ACCELERATION_TIME); // Adds the local time
@@ -209,22 +170,16 @@ public class Drone implements Runnable{
             case ASCENDING:
                 double travelZoneTime = calculateZoneTravelTime(currentEvent);
                 localTime = localTime.plusSeconds((long) travelZoneTime); // Adds the local time
-                //sleepFor(ACCELERATION_TIME);
+               // sleepFor(ACCELERATION_TIME);
                 System.out.println(name + ": ASCENDING AT TIME: " + localTime);
                 droneState = DroneState.CRUISING;
                 break;
 
             case CRUISING:
-                //sleepFor(travelZoneTime);
+                double travelZoneTime3 = calculateZoneTravelTime(currentEvent);
+               // sleepFor(travelZoneTime3);
                 System.out.println(name + ": CRUISING TO ZONE: " + currentEvent.getZoneId() +  " : AT TIME: " + localTime);
                 droneState = DroneState.ARRIVED;
-
-//            case ON_ROUTE:
-//
-//                //sleepFor(travelZoneTime); // Simulates the travel zone time
-//                System.out.println(name + ": ARRIVED AT ZONE: " + currentEvent.getZoneId() +  " : AT TIME: " + localTime); // Prints out a message that the drone has arrived at the fire zone
-//                droneState = DroneState.ARRIVED; // The drone has now arrived
-//                break;
 
             case ARRIVED: // When the drone has arrived
                  System.out.println(name + ": ARRIVED AT ZONE: " + currentEvent.getZoneId() +  " : AT TIME: " + localTime); // Prints out a message that the drone has arrived at the fire zone
@@ -237,14 +192,14 @@ public class Drone implements Runnable{
             case DROPPING_WATER:// When the drone is dropping water
                 System.out.println(name + ": WATER DROPPED, RETURNING TO BASE: AT TIME: " + localTime); // Prints out a message saying that the watter was dropped and that it's returning to base
                 localTime = localTime.plusSeconds((long) DECELERATION_TIME); // Adds the local time
-                //sleepFor(DECELERATION_TIME); // Simulates the deceleration time
+               // sleepFor(DECELERATION_TIME); // Simulates the deceleration time
                 droneState = DroneState.RETURNING_TO_BASE; // The drone is returning to base now
                 break;
 
             case RETURNING_TO_BASE: // The last case where the drone is returning
                 double travelZoneTime2 = calculateZoneTravelTime(currentEvent);
                 localTime = localTime.plusSeconds((long) travelZoneTime2 - 4); // Adds the local time
-                //sleepFor(travelZoneTime - 4); // Simulates the travel zone time
+               // sleepFor(travelZoneTime2 - 4); // Simulates the travel zone time
                 System.out.println(name + ": ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + localTime); // Prints out a message saying that the drone has arrived back and is now ready for the next event
                 completedEvent = currentEvent;
                 currentEvent = null;
@@ -254,10 +209,8 @@ public class Drone implements Runnable{
         }
     }
 
-
-
- @Override
-public void run() {
+    @Override
+    public void run() {
             while (true) {
                 handleDroneState();
             }
