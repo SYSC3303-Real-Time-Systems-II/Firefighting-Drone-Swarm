@@ -1,5 +1,6 @@
 # Default ignored files
 !**/src/main/**/out/
 !**/src/test/**/out/
+out/
 /shelf/
 /workspace.xml
