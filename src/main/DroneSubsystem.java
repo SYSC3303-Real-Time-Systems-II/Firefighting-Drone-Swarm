@@ -128,7 +128,7 @@ public class DroneSubsystem implements Runnable {
         double minDistance = Double.MAX_VALUE;
 
         for (Drone drone : drones) {
-            if (drone.getDroneState() == DroneState.AVAILABLE) {
+            if (drone.getDroneState() instanceof AvailableState) {
                 Coordinate droneCoords = drone.getCurrent_coords();
                 double distance = calculateDistance(eventCoords, droneCoords);
 
