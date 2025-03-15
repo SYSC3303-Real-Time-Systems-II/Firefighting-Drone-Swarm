@@ -14,7 +14,7 @@ public class DroneSubsystem implements Runnable {
 
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
-   // private final List<Drone> availableDrones = new ArrayList<>();
+    private final List<Drone> availableDrones = new ArrayList<>();
     private final ConcurrentHashMap<Integer, Drone> workingDrones = new ConcurrentHashMap<>();
 
     private Queue<InputEvent> pendingEvents = new LinkedList<>();
@@ -29,7 +29,7 @@ public class DroneSubsystem implements Runnable {
         for(int i = 0; i < numDrones; i++) {
             Drone drone = new Drone();
             drones.add(drone);
-           // availableDrones.add(drone);
+            availableDrones.add(drone);
             new Thread(drone).start();
         }
 
@@ -87,7 +87,7 @@ public class DroneSubsystem implements Runnable {
 
         for (InputEvent event : eventsToProcess) {
             Drone selectedDrone = chooseDroneAlgorithm(event);
-            if (selectedDrone != null ) {
+            if (selectedDrone != null && availableDrones.remove(selectedDrone)) {
                 selectedDrone.setAssignedEvent(event);
                 workingDrones.put(selectedDrone.getID(), selectedDrone);
                 System.out.println("[" + this.name + "] Assigned " + selectedDrone.getName() + " to event");
@@ -97,8 +97,6 @@ public class DroneSubsystem implements Runnable {
                 System.out.println("NO DRONE ");
             }
         }
-
-
         currentState = SubsystemState.SENDING_CONFIRMATION;
     }
 
@@ -109,6 +107,7 @@ public class DroneSubsystem implements Runnable {
             throw new RuntimeException(e);
         }
 
+        System.out.println( "start " +  workingDrones);
         // Convert entry set to a list to avoid ConcurrentModificationException
         List<Map.Entry<Integer, Drone>> entries = new ArrayList<>(workingDrones.entrySet());
 
@@ -122,12 +121,13 @@ public class DroneSubsystem implements Runnable {
                     workingDrone.setCompletedEvent(null); //reset since it has been completed
                     System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED EVENT");
                     sendConfirmation(completedEvent);
-                    //availableDrones.add(workingDrone);
+                    availableDrones.add(workingDrone);
                     workingDrones.remove(entry.getKey()); // Remove from working drones
                 }
             }
         }
 
+        System.out.println( "end  " +  workingDrones);
         // Move to next state after processing
         currentState = SubsystemState.WAITING;
     }
@@ -138,7 +138,7 @@ public class DroneSubsystem implements Runnable {
         double minDistance = Double.MAX_VALUE;
         for (Drone drone : drones) {
             if (drone.getDroneState() instanceof AvailableState | drone.getDroneState() instanceof AscendingState) {
-                Coordinate droneCoords = drone.getCurrent_coords();
+                Coordinate droneCoords = drone.getCurrentCoordinates();
                 double distance = calculateDistance(eventCoords, droneCoords);
 
                 if (distance < minDistance) {
