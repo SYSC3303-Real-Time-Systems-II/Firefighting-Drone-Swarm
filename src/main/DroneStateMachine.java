@@ -1,52 +1,52 @@
-interface DroneBaseState{
-    void handle(DroneBaseState context);
-    void addNewTask(InputEvent event);
+interface DroneStateMachine {
+    void handle(Drone context);
 }
 
-class InBaseState implements DroneBaseState {
+abstract class InBaseState implements DroneStateMachine {
 
     @Override
-    public void handle(DroneBaseState context) {
-
-    }
-
-    @Override
-    public void addNewTask(InputEvent event) {
-
-    }
-
+    public abstract void handle(Drone context);
 
 }
 
-class InFieldState implements DroneBaseState{
+abstract class InFieldState implements DroneStateMachine {
 
     @Override
-    public void handle(DroneBaseState context) {
-
-    }
-
-    @Override
-    public void addNewTask(InputEvent event) {
-
-    }
+    public abstract void handle(Drone context);
 }
 
 class AvailableState extends InBaseState {
 
+    @Override
+    public void handle(Drone context) {
+
+    }
 }
 
 class AscendingState extends InBaseState {
+    @Override
+    public void handle(Drone context) {
 
+    }
 }
 
 class CruisingState extends InFieldState {
+    @Override
+    public void handle(Drone context) {
 
+    }
 }
 
 class ReCalculatingState extends InFieldState {
+    @Override
+    public void handle(Drone context) {
 
+    }
 }
 
 class DropAgentState extends InFieldState {
+    @Override
+    public void handle(Drone context) {
 
+    }
 }
