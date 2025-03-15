@@ -56,7 +56,27 @@ class CruisingState extends InFieldState {
     @Override
     public void handle(Drone context) {
         double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
-        context.sleepFor(travelZoneTime);
+        int currentTime = 0;
+
+        while (currentTime < travelZoneTime){
+
+            if (travelZoneTime - currentTime < 1) {
+                double timeLeft = travelZoneTime - currentTime;
+                context.updateLocation(timeLeft);
+                context.sleepFor(timeLeft);
+            } else {
+                context.updateLocation(1);
+                context.sleepFor(1);
+            }
+
+            currentTime += 1;
+            System.out.println(context.getName() +  " Current Location: " + context.getCurrentCoordinates());
+        }
+
+
+        System.out.println("Travel Zone Time: " + travelZoneTime);
+        // context.sleepFor(travelZoneTime);
+
         System.out.println(context.getName() + ": CRUISING TO ZONE: " + context.getCurrentEvent().getZoneId() +  " : AT TIME: " + context.getLocalTime());
         context.setDroneState(new DropAgentState());
     }
