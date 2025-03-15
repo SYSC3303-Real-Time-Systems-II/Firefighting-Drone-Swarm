@@ -13,10 +13,12 @@ public class Drone implements Runnable{
     private final double DECELERATION_TIME = 0.075; // The deceleration time of the drone
     private final double TOP_SPEED = 20.8; // Top speed of the drone in meters per second
     private final double DROP_WATER_TIME = 20.0; // The time it takes for the drone to drop the water
+    private double MAX_WATER_CAPACITY = 30.0;
     private final String name; // This will be the name of teh drone based on its ID
 
     private static int nextID = 1; // Will be used to uniquely increment the ID
     private LocalTime localTime; // Will have the local time start of the event
+    private double waterCapacity = MAX_WATER_CAPACITY;
 
     private DroneStateMachine droneState; // This will be used for the drones state
     private Coordinate currentCoords;
@@ -96,6 +98,17 @@ public class Drone implements Runnable{
      */
     public double getDROP_WATER_TIME() {
         return DROP_WATER_TIME;
+    }
+
+    public double getWaterCapacity() {
+        return waterCapacity;
+    }
+
+    public void setWaterCapacity(double waterCapacity) {
+        this.waterCapacity = waterCapacity;
+    }
+    public void refillWater() {
+        this.waterCapacity = MAX_WATER_CAPACITY;  // Use the constant
     }
 
     /**
