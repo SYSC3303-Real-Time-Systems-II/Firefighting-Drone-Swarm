@@ -144,7 +144,7 @@ public class Scheduler implements Runnable {
                 this.addZones(receivedPackage.getZone(), this.systemType, this.name);
             }
             else { // If we have received an event package
-                System.out.println("["+this.name + "] RECEIVED AN EVENT <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.FireIncidentSubsystem); // Prints out a message that the event was received
+                System.out.println("["+this.name + "] RECEIVED AN EVENT <-- FROM " + Systems.FireIncidentSubsystem +": "+ receivedPackage.getRelayPackageID() ); // Prints out a message that the event was received
                 // Process the event and add it to the inputEvents queue
                 receivedPackage.getEvent().setZone(zones.get(receivedPackage.getEvent().getZoneId())); // Set the zone for the event
                 this.inputEvents.add(receivedPackage.getEvent()); // Adds the input events to the list of input events for the drone subsystem
@@ -166,7 +166,7 @@ public class Scheduler implements Runnable {
         try {
             byte[] message = serializeRelayPackage(relayPackage);  // Serializes the relay package by passing it to the method
             DatagramPacket sendPacket = new DatagramPacket(message, message.length,InetAddress.getLocalHost(), 4000); // The packet that will be sent to the fire incident subsystem which has a port of 4000
-            System.out.println("["+this.name + "] SENDING CONFIRMATION FOR --> " + relayPackage.getEvent().toString() + " TO: " + relayPackage.getReceiverSystem());
+            System.out.println("["+this.name + "] SENDING CONFIRMATION  --> To "+ relayPackage.getReceiverSystem()+ ": "  + relayPackage.getEvent().toString() );
             receiveAndSendFISSocket.send(sendPacket); // Send the relay package
         }
         catch (IOException e){
@@ -182,7 +182,7 @@ public class Scheduler implements Runnable {
         try {
             byte[] message = serializeInputEvent(inputEvent);  // Serializes the input event by passing it to the method
             DatagramPacket sendPacket = new DatagramPacket(message, message.length,InetAddress.getLocalHost(), 6000); // The packet that will be sent to the drone subsystem which has a port of 6000
-            System.out.println("["+this.name + "] SENDING THE EVENT --> " + inputEvent.toString() + " TO: " + Systems.DroneSubsystem); // Prints a message that its being sent
+            System.out.println("["+this.name + "] SENDING THE EVENT --> to " + Systems.DroneSubsystem +": " +inputEvent.toString()); // Prints a message that its being sent
             receiveAndSendDSSSocket.send(sendPacket); // Sends the input event
         }
         catch (IOException e){
@@ -201,7 +201,7 @@ public class Scheduler implements Runnable {
 
             // Deserialize the byte array into a InputEvent object
             InputEvent receivedInput = deserializeInputEvent(receivePacket);
-            System.out.println("["+this.name + "] RECEIVED EVENT <-- " + receivedInput + " FROM: DroneSubsystem");
+            System.out.println("["+this.name + "] RECEIVED EVENT <-- from " + Systems.DroneSubsystem +": "+ receivedInput);
 
             // Create a confirmation package and place in confirmationPackages queue
             RelayPackage sendingPackage = new RelayPackage("DRONE_CONFIRMATION", Systems.FireIncidentSubsystem, receivedInput, null);
