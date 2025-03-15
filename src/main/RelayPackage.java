@@ -1,11 +1,13 @@
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * The RelayPackage class represents a package used for communication between FireIncidentSubsystem and Scheduler.
  * It contains a unique ID, the receiver system, an optional event, and an optional list of zones.
  */
-public class RelayPackage {
+public class RelayPackage implements Serializable {
 
+    private static final long serialVersionUID = 1L; // Add this to avoid compatibility issues
     private String RelayPackageID;              // Unique identifier for the package
     private Systems receiverSystem;             // The system that should receive this package
     private InputEvent event;                   // The event associated with the package (optional)

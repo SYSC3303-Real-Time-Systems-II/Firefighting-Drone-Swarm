@@ -1,3 +1,4 @@
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -7,7 +8,7 @@ import java.util.Map;
  * EventBuffer is for communication between the Scheduler and DroneSubsystem.
  * It allows systems to communicate by adding and retrieving events in a synchronized manner.
  */
-public class EventBuffer {
+public class EventBuffer implements Serializable {
 
     // A map to store lists of InputEvents for each system
     private final Map<Systems, ArrayList<InputEvent>> buffer = new HashMap<>();
