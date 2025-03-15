@@ -1,177 +1,180 @@
 import java.io.*;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
+import java.net.*;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class DroneSubsystem implements Runnable {
 
-    private String name;
-    private Systems systemType;
-    private Coordinate current_coords;
-    private DatagramSocket receiveAndSendDDSSocket; // The socket that will be used to send and receive drones
-    private Drone drone; // The drone that will be used to send out to the zones for fire
+    private enum SubsystemState { WAITING, RECEIVED_EVENT, SENDING_CONFIRMATION }
 
-    public DroneSubsystem(String name) {
-        try{
-            this.name = name;
-            this.systemType = Systems.DroneSubsystem;
-            this.current_coords = new Coordinate(0, 0);
-            this.drone = new Drone();
-            this.receiveAndSendDDSSocket = new DatagramSocket(6000);
-        }catch(IOException e){
-            e.printStackTrace();
+    private final String name;
+    private final Systems systemType;
+    private final DatagramSocket socket;
+    private SubsystemState currentState = SubsystemState.WAITING;
+
+    // Drone management
+    private final List<Drone> drones = new CopyOnWriteArrayList<>();
+    private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
+    private final ConcurrentHashMap<Integer, Drone> workingDrones = new ConcurrentHashMap<>();
+    private final BlockingQueue<InputEvent> completedEvents = new LinkedBlockingQueue<>();
+
+    private InputEvent currentEvent;
+
+    public DroneSubsystem(String name, int numDrones) {
+        this.name = name;
+        this.systemType = Systems.DroneSubsystem;
+
+
+        // Initialize drone fleet
+        for(int i = 0; i < numDrones; i++) {
+            Drone drone = new Drone();
+            drones.add(drone);
+            availableDrones.add(drone);
+            new Thread(drone).start();
         }
 
-    }
-
-    /**
-     * This is a method used to serialize an input event to be sent to the scheduler as a confirmation. This will help in keeping the object
-     * and its attributes.
-     *
-     * @param inputEvent the input event being serialized.
-     * @return the array of bytes for the serialized input event
-     */
-    private byte[] serializeInputEvent(InputEvent inputEvent) throws IOException {
-        ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
-        try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
-            objectStream.writeObject(inputEvent);  // Write the RelayPackage object to the stream
-            objectStream.flush(); // Flushes the object stream
-        }
-        return byteStream.toByteArray();  // Return the byte array
-    }
-
-    /**
-     * This is a method used to deserialize an input event from the drone subsystem. This is again helpful in keeping the
-     * object and its attributes that was sent.
-     * @param receivePacket The datagram packet that is to be deserialized and returned as an InputEvent Object
-     * @return InputEvent that was received from the drone subsystem.
-     */
-    private InputEvent deserializeInputEvent(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength()); // Creates an array input stream from the datagram packet
-        try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) { // Creates an inout stream object from the array of input stream bytes as a wrapper
-            return (InputEvent) objectStream.readObject();  // Read the object from the byte array
-        }
-    }
-
-    /**
-     * A method that deals with receiving a message from the scheduler.
-     * It also returns the input event that was received from the scheduler.
-     * @return the input event from the scheduler.
-     *
-     */
-    private InputEvent receiveUDPMessageSCHD() {
         try {
-            byte[] receiveData = new byte[6000]; // Creates an array of bytes for the received packet
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // Receive a packet from the Scheduler
-            receiveAndSendDDSSocket.receive(receivePacket); // Receives the packet from the Scheduler
-
-            // Deserialize the byte array into an InputEvent object
-            InputEvent inputEvent = deserializeInputEvent(receivePacket);
-
-            System.out.println(name + ": RECEIVED EVENT FROM SCHEDULER --> " + inputEvent.toString()); // Prints a message saying that the drone subsystem has received an event from the scheduler
-            System.out.println(name + ": HANDLING EVENT: " + inputEvent); // Prints a message saying that the drone subsystem will handel the event
-
-            /// TODO NEED TO SAVE INPUT EVENT OR HAVE FUNCTION THAT CHECKS FOR DRONE AVAILABILITY HERE
-
-            return inputEvent;
-
-        }catch (IOException | ClassNotFoundException  e){
-            e.printStackTrace();
+            this.socket = new DatagramSocket(6000);
+            this.socket.setSoTimeout(2000);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to initialize UDP socket", e);
         }
-
-        return null;
-    }
-
-    /**
-     * A method to send the confirmation back to the scheduler.
-     * @param inputEvent the input event being sent back.
-     */
-    private void sendUPDMessageSCHD(InputEvent inputEvent) {
-        try {
-            byte[] message = serializeInputEvent(inputEvent);  // Serializes the input event by passing it to the method
-            DatagramPacket sendPacket = new DatagramPacket(message, message.length, InetAddress.getLocalHost(), 5001); // The packet that will be sent to the scheduler which has a port of 5001
-            System.out.println(this.name + ": SENDING THE EVENT --> " + inputEvent.toString() + " TO: " + Systems.DroneSubsystem); // Prints a message that its being sent
-            receiveAndSendDDSSocket.send(sendPacket); // Sends the input event
-        }
-        catch (IOException e){
-            e.printStackTrace();
-        }
-
-    }
-
-
-    /**
-     * A method used to calculate the travel time to a zone and can also be used to calculate the travel time back from the zone.
-     * @param event The event that is sent to the zone.
-     * @return the travel time of a zone.
-     */
-    public double calculateZoneTravelTime(InputEvent event){
-        Coordinate fire_coords = event.getZone().getZoneCenter();
-        return Math.sqrt(Math.pow(fire_coords.getX() - current_coords.getX(), 2) + Math.pow(fire_coords.getY() - current_coords.getY(), 2)) / drone.getTOP_SPEED();
-    }
-
-    /**
-     * Returns the arrival time of drone to arrive at a zone,
-     * @param event The event sent to the drone subsystem.
-     * @return the arrival time.
-     */
-    public double calculateArrivalZoneTime(InputEvent event) {
-        return calculateZoneTravelTime(event) + drone.getACCELERATION_TIME(); // Convert to minutes
     }
 
     @Override
     public void run() {
+        System.out.println("["+this.name + "] subsystem started with " + drones.size() + " drones");
 
-        System.out.println(this.name + " subsystem started..."); // Prints out a message that the drone subsystem has started
+        while(true) {
+            switch(currentState) {
+                case WAITING:
+                    handleWaitingState();
+                    break;
 
-        while (true) {
-            // Checks for an event sent from scheduler
-            InputEvent event = receiveUDPMessageSCHD();
+                case RECEIVED_EVENT:
+                    handleReceivedEventState();
+                    break;
 
-            if (event != null) { // Checks if the event is not null and that the drone is available
-
-                // Simulate handling the fire meaning that the drone will begin to handle the events, checks for its state first
-                if(drone.getDroneState() == DroneState.AVAILABLE) { // If the drone is available
-                    System.out.println(drone.getName() + ": AVAILABLE TO HANDLE --> : " + event); // Prints that the drone that was found available to handle the event
-                    drone.setLocalTime(event.getTime()); // Sets the event as the local time for the drone
-                    drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as on route to the zone
-                    drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as arrived
-                }
-
-                // Step 4: Check if the drone has arrived at the zone to message back to the scheduler
-                if(drone.getDroneState() == DroneState.ARRIVED) {
-                    event.setStatus(Status.COMPLETE); // Makes the status complete
-                    event.setTime(event.getTime().plusSeconds((long) calculateArrivalZoneTime(event))); // Update time
-                    System.out.println(drone.getName() + ": COMPLETED EVENT (ARRIVED AT ZONE): " + event); // Prints out the time that the drone arrived at zone
-                    System.out.println(name + ": SENDING EVENT TO SCHEDULER --> " + event.toString()); // Sends the message back to the Scheduler
-                    drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as arrived
-                    sendUPDMessageSCHD(event);
-                }
-
-                // Step 5: Heads back to home base
-                drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as dropping water
-
-                // Step 6: Arrives back at the home base and now ready to be sent to the next zone
-                drone.handleDroneState(calculateZoneTravelTime(event), event.getZoneId()); // Calls the state transition function of the drone to be set as travelling back to the home base
-
-            } else {
-                System.out.println("[" + systemType + " - " + name + "] No event to handle, retrying...");
-
+                case SENDING_CONFIRMATION:
+                    handleSendingConfirmationState();
+                    break;
             }
-
         }
     }
 
-    /**
-     * A main method that will be used to run the thread.
-     */
+    private boolean handleWaitingState() {
+        try {
+            byte[] buffer = new byte[1024];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
-    public static void main(String[] args) {
-        //Initialize and create thread for the DroneSubsystem
-        DroneSubsystem droneSubsystem = new DroneSubsystem("DS");
-        Thread drone_t1 = new Thread(droneSubsystem);
-        drone_t1.start();
+            socket.receive(packet);
+
+            InputEvent event = deserializeEvent(packet.getData());
+            System.out.println("["+this.name + "] received event: " + event);
+            currentEvent = event;
+            currentState = SubsystemState.RECEIVED_EVENT;
+            return true;
+        }catch (SocketTimeoutException e) {
+            currentState = SubsystemState.SENDING_CONFIRMATION;
+            return false;
+        }catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
+    private void handleReceivedEventState() {
+        if(currentEvent != null) {
+            Drone selectedDrone = chooseDroneAlgorithm(currentEvent);
 
+            if (selectedDrone != null && availableDrones.remove(selectedDrone)) {
+                selectedDrone.setAssignedEvent(currentEvent);
+                workingDrones.put(selectedDrone.getID(), selectedDrone);
+                System.out.println("["+this.name + "] Assigned " + selectedDrone.getName() + " to event");
+            }
+        }
+        currentState = SubsystemState.SENDING_CONFIRMATION;
+    }
+
+    private void handleSendingConfirmationState() {
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Use entrySet iterator for safe removal
+        Iterator<Map.Entry<Integer, Drone>> iterator = workingDrones.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Integer, Drone> entry = iterator.next();
+            Drone workingDrone = entry.getValue();
+
+            if (workingDrone != null) {
+                InputEvent completedEvent = workingDrone.getCompletedEvent();
+                if (completedEvent != null) {
+                    System.out.println("["+this.name + "] " + workingDrone.getName() + ": COMPLETED EVENT");
+                    sendConfirmation(completedEvent);
+                    availableDrones.add(workingDrone);
+                    iterator.remove(); // Safe removal using iterator
+                }
+            }
+        }
+        currentState = SubsystemState.WAITING;
+    }
+
+    private Drone chooseDroneAlgorithm(InputEvent event) {
+        Coordinate eventCoords = event.getZone().getZoneCenter();
+        Drone closestDrone = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (Drone drone : drones) {
+            if (drone.getDroneState() == DroneState.AVAILABLE) {
+                Coordinate droneCoords = drone.getCurrent_coords();
+                double distance = calculateDistance(eventCoords, droneCoords);
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestDrone = drone;
+                }
+            }
+        }
+        return closestDrone;
+    }
+
+    private double calculateDistance(Coordinate a, Coordinate b) {
+        return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) +
+                Math.pow(a.getY() - b.getY(), 2));
+    }
+
+    private void sendConfirmation(InputEvent event) {
+        try {
+            byte[] data = serializeEvent(event);
+            DatagramPacket packet = new DatagramPacket(
+                    data, data.length,
+                    InetAddress.getLocalHost(), 5001
+            );
+            socket.send(packet);
+            System.out.println("["+this.name + "] SENDING EVENT TO SCHEDULER --> " + event.toString()); // Sends the message back to the Scheduler
+        } catch (IOException e) {
+            System.err.println("Failed to send confirmation: " + e.getMessage());
+        }
+    }
+
+    private byte[] serializeEvent(InputEvent event) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(event);
+        return bos.toByteArray();
+    }
+
+    private InputEvent deserializeEvent(byte[] data) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream bis = new ByteArrayInputStream(data);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+        return (InputEvent) ois.readObject();
+    }
+
+    public static void main(String[] args) {
+        DroneSubsystem subsystem = new DroneSubsystem("DS", 5);
+        new Thread(subsystem).start();
+    }
 }
