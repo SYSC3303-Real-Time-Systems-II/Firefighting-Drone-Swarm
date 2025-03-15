@@ -14,22 +14,22 @@ public class DroneSubsystem implements Runnable {
 
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
-    private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
+   // private final List<Drone> availableDrones = new ArrayList<>();
     private final ConcurrentHashMap<Integer, Drone> workingDrones = new ConcurrentHashMap<>();
-    private final BlockingQueue<InputEvent> completedEvents = new LinkedBlockingQueue<>();
 
+    private Queue<InputEvent> pendingEvents = new LinkedList<>();
     private InputEvent currentEvent;
+
 
     public DroneSubsystem(String name, int numDrones) {
         this.name = name;
         this.systemType = Systems.DroneSubsystem;
 
-
         // Initialize drone fleet
         for(int i = 0; i < numDrones; i++) {
             Drone drone = new Drone();
             drones.add(drone);
-            availableDrones.add(drone);
+           // availableDrones.add(drone);
             new Thread(drone).start();
         }
 
@@ -66,16 +66,14 @@ public class DroneSubsystem implements Runnable {
         try {
             byte[] buffer = new byte[1024];
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
             socket.receive(packet);
-
             InputEvent event = deserializeEvent(packet.getData());
             System.out.println("["+this.name + "] received event: " + event);
-            currentEvent = event;
+            pendingEvents.add(event);
             currentState = SubsystemState.RECEIVED_EVENT;
             return true;
         }catch (SocketTimeoutException e) {
-            currentState = SubsystemState.SENDING_CONFIRMATION;
+            currentState = SubsystemState.RECEIVED_EVENT;
             return false;
         }catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -84,15 +82,23 @@ public class DroneSubsystem implements Runnable {
     }
 
     private void handleReceivedEventState() {
-        if(currentEvent != null) {
-            Drone selectedDrone = chooseDroneAlgorithm(currentEvent);
+        // Convert queue to a list to avoid ConcurrentModificationException
+        List<InputEvent> eventsToProcess = new ArrayList<>(pendingEvents);
 
-            if (selectedDrone != null && availableDrones.remove(selectedDrone)) {
-                selectedDrone.setAssignedEvent(currentEvent);
+        for (InputEvent event : eventsToProcess) {
+            Drone selectedDrone = chooseDroneAlgorithm(event);
+            if (selectedDrone != null ) {
+                selectedDrone.setAssignedEvent(event);
                 workingDrones.put(selectedDrone.getID(), selectedDrone);
-                System.out.println("["+this.name + "] Assigned " + selectedDrone.getName() + " to event");
+                System.out.println("[" + this.name + "] Assigned " + selectedDrone.getName() + " to event");
+
+                pendingEvents.remove(event); // Remove event from queue since it's assigned
+            } else {
+                System.out.println("NO DRONE ");
             }
         }
+
+
         currentState = SubsystemState.SENDING_CONFIRMATION;
     }
 
@@ -103,22 +109,26 @@ public class DroneSubsystem implements Runnable {
             throw new RuntimeException(e);
         }
 
-        // Use entrySet iterator for safe removal
-        Iterator<Map.Entry<Integer, Drone>> iterator = workingDrones.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<Integer, Drone> entry = iterator.next();
+        // Convert entry set to a list to avoid ConcurrentModificationException
+        List<Map.Entry<Integer, Drone>> entries = new ArrayList<>(workingDrones.entrySet());
+
+        // Process each working drone once
+        for (Map.Entry<Integer, Drone> entry : entries) {
             Drone workingDrone = entry.getValue();
 
             if (workingDrone != null) {
                 InputEvent completedEvent = workingDrone.getCompletedEvent();
                 if (completedEvent != null) {
-                    System.out.println("["+this.name + "] " + workingDrone.getName() + ": COMPLETED EVENT");
+                    workingDrone.setCompletedEvent(null); //reset since it has been completed
+                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED EVENT");
                     sendConfirmation(completedEvent);
-                    availableDrones.add(workingDrone);
-                    iterator.remove(); // Safe removal using iterator
+                    //availableDrones.add(workingDrone);
+                    workingDrones.remove(entry.getKey()); // Remove from working drones
                 }
             }
         }
+
+        // Move to next state after processing
         currentState = SubsystemState.WAITING;
     }
 
@@ -126,9 +136,8 @@ public class DroneSubsystem implements Runnable {
         Coordinate eventCoords = event.getZone().getZoneCenter();
         Drone closestDrone = null;
         double minDistance = Double.MAX_VALUE;
-
         for (Drone drone : drones) {
-            if (drone.getDroneState() instanceof AvailableState) {
+            if (drone.getDroneState() instanceof AvailableState | drone.getDroneState() instanceof AscendingState) {
                 Coordinate droneCoords = drone.getCurrent_coords();
                 double distance = calculateDistance(eventCoords, droneCoords);
 
@@ -174,7 +183,7 @@ public class DroneSubsystem implements Runnable {
     }
 
     public static void main(String[] args) {
-        DroneSubsystem subsystem = new DroneSubsystem("DS", 5);
+        DroneSubsystem subsystem = new DroneSubsystem("DSS", 1);
         new Thread(subsystem).start();
     }
 }
