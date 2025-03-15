@@ -224,7 +224,7 @@ public class FireIncidentSubsystem implements Runnable {
         zonesSent = true;
     }
 
-    private void handleSendingState() {
+    public void handleSendingState() {
         if (!zonesSent) {
             sendZonePackage();
         } else if (!inputEvents.isEmpty()) {
@@ -265,7 +265,7 @@ public class FireIncidentSubsystem implements Runnable {
         }
     }
 
-    private void handleIdleState() {
+    public void handleIdleState() {
         try {
             // Still listen for potential late confirmations
             byte[] buffer = new byte[6000];

@@ -12,43 +12,33 @@ import static org.junit.jupiter.api.Assertions.*;
 class DroneSubsystemTest {
 
     /**
-     * Tests the method to calculate the total travel time of the drone based on the zone, speed, distance, etc.
+     * Tests the method to calculate the handling of a received state. Also,
+     * Tests the ability for calculating the distance between teh drone and the zone.
      */
     @Test
-    void calculateTotalTravelTime(){
+    void testDSS() {
+        DroneSubsystem dss = new DroneSubsystem("DSS1", 5); // Creates a new drone subsystem object
 
-        Zone zone = new Zone(1, new Coordinate(0, 0), new Coordinate(700,600)); // Creates a new zone object that will be assigned to the event object
+        Zone zone = new Zone(1, new Coordinate(0, 0), new Coordinate(700, 600)); // Creates a new zone object
 
-        EventBuffer buffer = new EventBuffer(); // Creates an event buffer
+        InputEvent inputEvent = new InputEvent("14:00:15", 1, "FIRE_DETECTED", "High", Status.UNRESOLVED); // Creates a new inpur event object
 
-        DroneSubsystem droneSubsystem = new DroneSubsystem("drone", buffer); // Creates an object of the drone subsystem
+        inputEvent.setZone(zone); // Sets the zoen for the input event
 
-        InputEvent inputEvent = new InputEvent("14:10:00", 3, "FIRE_DETECTED", "Low", Status.UNRESOLVED); // Created the input event which will be used to test the method
+        dss.setCurrentEvent(inputEvent); // Creates and assigns the input event to teh drone subsystem
 
-        inputEvent.setZone(zone); // Sets the zone of the event
+        assertEquals(0, dss.getWorkingDrones().size()); // No drone would be serviced to do anything yet
 
-        assertEquals(22.162366483877133, droneSubsystem.calculateZoneTravelTime(inputEvent)); // Checks that the calculated drone subsystem zone travel time is the expected value
+        dss.handleReceivedEventState(); // gets a drone to do handle the event
 
-        assertEquals(22.21336648387713, droneSubsystem.calculateArrivalZoneTime(inputEvent)); // Checks that the calculated drone subsystem arrival time for the zone is the expected value
-    }
+        assertEquals(1, dss.getWorkingDrones().size()); // one drone would be serviced to do something
 
-    /**
-     * These test cases will test if the drone subsystem initializes to the WAITING state, and switches between states properly
-     */
-    @Test
-    void testDroneSubsystemState(){
-        Zone zone = new Zone(1, new Coordinate(0, 0), new Coordinate(700,600)); // Creates a new zone object that will be assigned to the event object
-        EventBuffer buffer = new EventBuffer(); // Creates an event buffer
-        DroneSubsystem sub = new DroneSubsystem("drone", buffer); // Creates an object of the drone subsystem
-        InputEvent inputEvent = new InputEvent("14:10:00", 3, "FIRE_DETECTED", "Low", Status.UNRESOLVED); // Created the input event which will be used to test the method
-        inputEvent.setZone(zone); // Sets the zone of the event
+        Coordinate c1 = new Coordinate(30, 90); // Creates a coordinate object
 
-        assertEquals(sub.getDroneSubsystemState(), DroneSubsystemState.WAITING); // Check that the initial state of the subsystem is WAITING
-        sub.handleDroneSubsystemState(inputEvent); // Update the state
-        assertEquals(sub.getDroneSubsystemState(), DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER); // Check if the state updated to the next state properly
-        sub.handleDroneSubsystemState(inputEvent); // Update the state
-        assertEquals(sub.getDroneSubsystemState(), DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER); // Check if the state updated to the next state properly
-        sub.handleDroneSubsystemState(inputEvent); // Update the state
-        assertEquals(sub.getDroneSubsystemState(), DroneSubsystemState.WAITING); // Check if the state looped back to the first state
+        Coordinate c2 = new Coordinate(20, 50); // Creates another coordinate object
+
+        assertEquals(41.23105625617661, dss.calculateDistance(c1, c2)); // Compares the expected and actual value
+
     }
 }
+

@@ -13,30 +13,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class DroneTest {
 
     /**
-     * These test cases will test if the drone initializes to the AVAILABLE state, and switches between states properly
-     */
-    @Test
-    void testDroneState(){
-        Drone drone = new Drone();
-        drone.setLocalTime(LocalTime.MIDNIGHT); //The drone class needs a local time. It doesn't have to be midnight, this is just used for the test.
-        assertEquals(drone.getDroneState(), DroneState.AVAILABLE); //Make sure the drone starts at the AVAILABLE state
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.ON_ROUTE); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.ARRIVED); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.DROPPING_WATER); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.RETURNING_TO_BASE); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.AVAILABLE); //Check if the state looped back to the first state
-    }
-
-    /**
      * Test if the drone objects are initialized properly
      */
     @Test
-    void testDroneAttributes(){
+    void testDroneAndAttributes(){
         //Three drones will be used to test this
         Drone drone1 = new Drone();
         Drone drone2 = new Drone();
@@ -51,5 +31,21 @@ class DroneTest {
         assertEquals(drone1.getName(), "Drone1");
         assertEquals(drone2.getName(), "Drone2");
         assertEquals(drone3.getName(), "Drone3");
+
+        //Test the coordinates
+        assertEquals(new Coordinate(0, 0).toString(), drone1.getCurrent_coords().toString());
+
+        //Test acceleration time
+        assertEquals(0.051, drone1.getACCELERATION_TIME());
+
+        //Test declaration time
+        assertEquals(0.075, drone1.getDECELERATION_TIME());
+
+        //Test top speed
+        assertEquals(20.8, drone1.getTOP_SPEED());
+
+        //Test drop water time
+        assertEquals(20.0, drone1.getDROP_WATER_TIME());
+
     }
 }

@@ -49,6 +49,20 @@ public class Scheduler implements Runnable {
     }
 
     /**
+     * Gets the input events. FOR TESTING PURPOSES.
+     */
+    public PriorityQueue<InputEvent> getInputEvent() {
+        return inputEvents;
+    }
+
+    /**
+     * Gets the confirmation package. FOR TESTING PURPOSE.
+     */
+    public Queue<RelayPackage> getConfirmationPackage() {
+        return confirmationPackages;
+    }
+
+    /**
      * Adds zones to the scheduler's zone map.
      * @param zonesList   The list of zones to add.
      * @param systemType  The system type sending the zones.
@@ -216,13 +230,14 @@ public class Scheduler implements Runnable {
         }
     }
 
+
     /**
      * Handles the RECEIVE_FROM_FIS state of the scheduler state machine.
      * - Receives messages from the FireIncidentSubsystem (blocking)
      * - Transitions to SEND_TO_DSS state regardless of message reception
      * - Maintains FIS communication channel responsiveness
      */
-    private void handleReceiveFromFIS() {
+    public void handleReceiveFromFIS() {
         Boolean receiveEvent = receiveUDPMessageFIS();
         if (receiveEvent) {
             currentState = SchedulerState.SEND_TO_DSS;
@@ -239,7 +254,7 @@ public class Scheduler implements Runnable {
      *   • RECEIVE_FROM_FIS if no events available
      * - Ensures non-blocking operation when queue is empty
      */
-    private void handleSendToDSS() {
+    public void handleSendToDSS() {
         if (!inputEvents.isEmpty()) {
             InputEvent event = inputEvents.poll();
             sendUDPMessageDSS(event);
@@ -258,7 +273,7 @@ public class Scheduler implements Runnable {
      * - Implements non-blocking wait pattern for system responsiveness
      * @return void (state transition handled through currentState)
      */
-    private void handleCheckDSSResponse() {
+    public void handleCheckDSSResponse() {
         boolean receivedResponse = receiveUDPMessageDSS();
         currentState = receivedResponse ? SchedulerState.SEND_CONFIRMATION : SchedulerState.RECEIVE_FROM_FIS;
     }
@@ -270,7 +285,7 @@ public class Scheduler implements Runnable {
      * - Ensures fire subsystem receives completion notifications
      *   even if multiple confirmations are queued
      */
-    private void handleSendConfirmation() {
+    public void handleSendConfirmation() {
         if (!confirmationPackages.isEmpty()) {
             sendUDPMessageFIS(confirmationPackages.poll());
         }
