@@ -1,8 +1,10 @@
+import java.io.Serializable;
+
 /**
  * The Zone class represents a  zone defined by its ID, start and end coordinates, and a calculated center coordinate.
  * It provides methods to calculate the center and parse coordinate strings.
  */
-public class Zone {
+public class Zone implements Serializable {
 
     private final int zoneID;               // Unique identifier for the zone
     private final Coordinate zoneStart;     // Starting coordinate of the zone

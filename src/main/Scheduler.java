@@ -1,3 +1,5 @@
+import java.io.*;
+import java.net.*;
 import java.util.*;
 
 /**
@@ -11,17 +13,14 @@ public class Scheduler implements Runnable {
     private PriorityQueue<InputEvent> inputEvents;      // Priority queue of input events, ordered by severity
     private Queue<RelayPackage> confirmationPackages;   // Queue of confirmation packages to send back to the FireIncidentSubsystem
     private Map<Integer, Zone> zones;                   // Map of zones, keyed by zone ID
-    private RelayBuffer relayBuffer;                    // Buffer for communication with the FireIncidentSubsystem
-    private EventBuffer eventBuffer;                    // Buffer for communication with the DroneSubsystem
-    private SchedulerState schedulerState;              // The state of the scheduler for the state transition done by the state machine
+    private DatagramSocket receiveAndSendFISSocket, receiveAndSendDSSSocket; // Socket for receiving and sending communication with the FireIncidentSubsystem and DroneSubsystem
+    private SchedulerState currentState;               // Current state of the Scheduler's finite-state machine
+
     /**
      * Constructs a Scheduler object.
-     *
      * @param name        The name of the scheduler.
-     * @param relayBuffer The RelayBuffer used for communication with the FireIncidentSubsystem.
-     * @param eventBuffer The EventBuffer used for communication with the DroneSubsystem.
      */
-    public Scheduler(String name, RelayBuffer relayBuffer, EventBuffer eventBuffer) {
+    public Scheduler(String name) {
         // Comparator to prioritize events based on severity (High > Moderate > Low)
         Comparator<InputEvent> priorityComparator = Comparator.comparingInt(inputEvent -> {
             switch (inputEvent.getSeverity()) {
@@ -32,19 +31,25 @@ public class Scheduler implements Runnable {
             }
         });
 
-        this.name = name;
-        this.systemType = Systems.Scheduler;
-        this.inputEvents = new PriorityQueue<>(priorityComparator);
-        this.confirmationPackages = new LinkedList<>();
-        this.zones = new HashMap<>();
-        this.relayBuffer = relayBuffer;
-        this.eventBuffer = eventBuffer;
-        this.schedulerState = SchedulerState.WAITING;
+        try {
+            this.name = name;
+            this.systemType = Systems.Scheduler;
+            this.inputEvents = new PriorityQueue<>(priorityComparator);
+            this.confirmationPackages = new LinkedList<>();
+            this.zones = new HashMap<>();
+            this.receiveAndSendFISSocket = new DatagramSocket(5000); // Has a port of 5000
+            this.receiveAndSendDSSSocket = new DatagramSocket(5001); // Has a port of 5001
+            this.receiveAndSendDSSSocket.setSoTimeout(2000); // 2-second timeout
+            this.receiveAndSendFISSocket.setSoTimeout(2500);
+            this.currentState = SchedulerState.RECEIVE_FROM_FIS;
+
+        }catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
      * Adds zones to the scheduler's zone map.
-     *
      * @param zonesList   The list of zones to add.
      * @param systemType  The system type sending the zones.
      * @param name        The name of the system sending the zones.
@@ -53,12 +58,11 @@ public class Scheduler implements Runnable {
         for (Zone zone : zonesList) {
             this.zones.put(zone.getZoneID(), zone);
         }
-        System.out.println(this.name + ": Added zones: " + this.zones);
+        System.out.println("["+this.name + "] Added zones: " + this.zones);
     }
 
     /**
      * Retrieves a map of all zones currently managed by the scheduler.
-     *
      * @return A map of zone IDs to Zone objects.
      */
     public Map<Integer, Zone> getZones() {
@@ -66,47 +70,211 @@ public class Scheduler implements Runnable {
     }
 
     /**
-     * Deals with the transitioning of the states for the scheduler such as receiving and sending events to both the fire
-     * incident subsystem and drone subsystem.
-     * @param inputEvent the event that is both sent and received.
-     * @param name the name of the input ID for the package.
-     * @param relayPackage the name of the package being sent back to the FIS.
+     * This is a method used to serialize a relay package to be sent to the Scheduler. This will help in keeping the object
+     * and its attributes.
+     *
+     * @param relayPackage the relay package being serialized.
+     * @return the array of bytes for the serialized relay package
      */
-    public void handleSchedulerState(InputEvent inputEvent, String name, RelayPackage relayPackage) {
-        switch(schedulerState){
-            case WAITING:
-                System.out.println(this.name + ": RECEIVED AN EVENT <-- " + name + " FROM: " + Systems.FireIncidentSubsystem); // Prints out a message that the event was received
-                // Process the event and add it to the inputEvents queue
-                inputEvent.setZone(zones.get(inputEvent.getZoneId())); // Set the zone for the event
-                this.inputEvents.add(inputEvent); // Adds the input events to the list of input events for the drone subsystem
-                schedulerState = SchedulerState.RECEIVED_EVENT_FROM_FIS; // Makes the state as received an event from the FIS
-                break;
-            case RECEIVED_EVENT_FROM_FIS:
-                System.out.println(this.name + ": SENDING THE EVENT --> " + inputEvent.toString() + " TO: " + Systems.DroneSubsystem);
-                this.eventBuffer.addInputEvent(inputEvent, Systems.DroneSubsystem); // Sends the event to the drone sub-system
-                schedulerState = SchedulerState.SENT_EVENT_TO_DRONE_SUBSYSTEM; // Makes the state as sent the event to teh drone subsystem
-                break;
-            case SENT_EVENT_TO_DRONE_SUBSYSTEM:
-                System.out.println(this.name + ": RECEIVED EVENT <-- " + inputEvent.toString() + " FROM: " + Systems.DroneSubsystem);
-                // Create a confirmation package and place in confirmationPackages queue
-                RelayPackage sendingPackage = new RelayPackage("DRONE_CONFIRMATION", Systems.FireIncidentSubsystem, inputEvent, null);
-                this.confirmationPackages.add(sendingPackage);
-                schedulerState = SchedulerState.SEND_EVENT_TO_FIS; // Makes the state as getting ready to send the event back to the FIS
-                break;
-            case SEND_EVENT_TO_FIS:
-                System.out.println(this.name + ": SENDING CONFIRMATION FOR --> " + relayPackage.getEvent().toString() + " TO: " + relayPackage.getReceiverSystem());
-                relayBuffer.addReplayPackage(relayPackage);
-                schedulerState = SchedulerState.WAITING; // Makes the state back to waiting
-                break;
+    private byte[] serializeRelayPackage(RelayPackage relayPackage) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
+        try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
+            objectStream.writeObject(relayPackage);  // Write the RelayPackage object to the stream
+            objectStream.flush(); // Flushes the object stream
+        }
+        return byteStream.toByteArray();  // Return the byte array
+    }
+
+    /**
+     * This is a method used to serialize an input event to be sent to the drone subsystem. This will help in keeping the object
+     * and its attributes.
+     *
+     * @param inputEvent the input event being serialized.
+     * @return the array of bytes for the serialized input event
+     */
+    private byte[] serializeInputEvent(InputEvent inputEvent) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
+        try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
+            objectStream.writeObject(inputEvent);  // Write the RelayPackage object to the stream
+            objectStream.flush(); // Flushes the object stream
+        }
+        return byteStream.toByteArray();  // Return the byte array
+    }
+
+    /**
+     * This is a method used to deserialize an input event from the drone subsystem. This is again helpful in keeping the
+     * object and its attributes that was sent.
+     * @param receivePacket The packets to be received and deserialized into an InputEvent object
+     * @return InputEvent that was received from the drone subsystem.
+     */
+    private InputEvent deserializeInputEvent(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength());
+        try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
+            return (InputEvent) objectStream.readObject();  // Read the object from the byte array
         }
     }
 
     /**
-     * Gets the state of the scheduler.
-     * @return the state of the scheduler.
+     * This is a method used to deserialize a relay package from the Scheduler. This is again helpful in keeping the
+     * object and its attributes that was sent.
+     *  @param receivePacket The packets to be received and deserialized into a RelayPackage object
+     * @return relay package that was received from the FIS.
      */
-    public SchedulerState getSchedulerState() {
-        return schedulerState;
+    private RelayPackage deserializeRelayPackage(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength());
+        try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
+            return (RelayPackage) objectStream.readObject();  // Read the object from the byte array
+
+        }
+    }
+
+    /**
+     * A method that deals with receiving a message from the FIS.
+     */
+    private boolean receiveUDPMessageFIS(){
+        try{
+            byte[] receiveData = new byte[6000];
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // Receive a packet from the FireIncidentSubsystem
+            receiveAndSendFISSocket.receive(receivePacket); // Receives the packet from the FIS
+
+            RelayPackage receivedPackage = deserializeRelayPackage(receivePacket);
+
+            // Check for RelayPackage from FireIncidentSubsystem
+            if (receivedPackage.getRelayPackageID().contains("ZONE_PKG")) { // If a zone package was received from the fire incident subsystem
+                this.addZones(receivedPackage.getZone(), this.systemType, this.name);
+            }
+            else { // If we have received an event package
+                System.out.println("["+this.name + "] RECEIVED AN EVENT <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.FireIncidentSubsystem); // Prints out a message that the event was received
+                // Process the event and add it to the inputEvents queue
+                receivedPackage.getEvent().setZone(zones.get(receivedPackage.getEvent().getZoneId())); // Set the zone for the event
+                this.inputEvents.add(receivedPackage.getEvent()); // Adds the input events to the list of input events for the drone subsystem
+            }
+            return true;
+        }catch (SocketTimeoutException e) {
+            return false;
+        } catch (IOException | ClassNotFoundException e){
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * A method that is used to send a confirmation relay package back to the fire incident subsystem.
+     * @param relayPackage the relay package being sent back to the fire incident subsystem.
+     */
+    private void sendUDPMessageFIS(RelayPackage relayPackage){
+        try {
+            byte[] message = serializeRelayPackage(relayPackage);  // Serializes the relay package by passing it to the method
+            DatagramPacket sendPacket = new DatagramPacket(message, message.length,InetAddress.getLocalHost(), 4000); // The packet that will be sent to the fire incident subsystem which has a port of 4000
+            System.out.println("["+this.name + "] SENDING CONFIRMATION FOR --> " + relayPackage.getEvent().toString() + " TO: " + relayPackage.getReceiverSystem());
+            receiveAndSendFISSocket.send(sendPacket); // Send the relay package
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * A method used to send an input event to the drone subsystem.
+     * @param inputEvent the input event being sent to the drone subsystem.
+     */
+    private void sendUDPMessageDSS(InputEvent inputEvent){
+        try {
+            byte[] message = serializeInputEvent(inputEvent);  // Serializes the input event by passing it to the method
+            DatagramPacket sendPacket = new DatagramPacket(message, message.length,InetAddress.getLocalHost(), 6000); // The packet that will be sent to the drone subsystem which has a port of 6000
+            System.out.println("["+this.name + "] SENDING THE EVENT --> " + inputEvent.toString() + " TO: " + Systems.DroneSubsystem); // Prints a message that its being sent
+            receiveAndSendDSSSocket.send(sendPacket); // Sends the input event
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * A method that is used to receive the input event from the drone subsystem.
+     */
+    private boolean receiveUDPMessageDSS() {
+        try {
+            byte[] receiveData = new byte[6000];
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // The packet to be received from the drone subsystem
+            receiveAndSendDSSSocket.receive(receivePacket); // Receives the packet from the drone subsystem
+
+            // Deserialize the byte array into a InputEvent object
+            InputEvent receivedInput = deserializeInputEvent(receivePacket);
+            System.out.println("["+this.name + "] RECEIVED EVENT <-- " + receivedInput + " FROM: DroneSubsystem");
+
+            // Create a confirmation package and place in confirmationPackages queue
+            RelayPackage sendingPackage = new RelayPackage("DRONE_CONFIRMATION", Systems.FireIncidentSubsystem, receivedInput, null);
+            confirmationPackages.add(sendingPackage);
+            return true;
+
+        } catch (SocketTimeoutException e) {
+            return false;
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Handles the RECEIVE_FROM_FIS state of the scheduler state machine.
+     * - Receives messages from the FireIncidentSubsystem (blocking)
+     * - Transitions to SEND_TO_DSS state regardless of message reception
+     * - Maintains FIS communication channel responsiveness
+     */
+    private void handleReceiveFromFIS() {
+        Boolean receiveEvent = receiveUDPMessageFIS();
+        if (receiveEvent) {
+            currentState = SchedulerState.SEND_TO_DSS;
+        }else{
+            currentState = SchedulerState.CHECK_DSS_RESPONSE;
+        }
+    }
+
+    /**
+     * Handles the SEND_TO_DSS state of the scheduler state machine.
+     * - Sends highest priority event to DroneSubsystem if available
+     * - Transitions to:
+     *   • CHECK_DSS_RESPONSE if event was sent
+     *   • RECEIVE_FROM_FIS if no events available
+     * - Ensures non-blocking operation when queue is empty
+     */
+    private void handleSendToDSS() {
+        if (!inputEvents.isEmpty()) {
+            InputEvent event = inputEvents.poll();
+            sendUDPMessageDSS(event);
+            currentState = SchedulerState.CHECK_DSS_RESPONSE;
+        } else {
+            currentState = SchedulerState.RECEIVE_FROM_FIS;
+        }
+    }
+
+    /**
+     * Handles the CHECK_DSS_RESPONSE state of the scheduler state machine.
+     * - Checks for DroneSubsystem confirmation with 2-second timeout
+     * - Transitions to:
+     *   • SEND_CONFIRMATION if response received
+     *   • RECEIVE_FROM_FIS if timeout occurs
+     * - Implements non-blocking wait pattern for system responsiveness
+     * @return void (state transition handled through currentState)
+     */
+    private void handleCheckDSSResponse() {
+        boolean receivedResponse = receiveUDPMessageDSS();
+        currentState = receivedResponse ? SchedulerState.SEND_CONFIRMATION : SchedulerState.RECEIVE_FROM_FIS;
+    }
+
+    /**
+     * Handles the SEND_CONFIRMATION state of the scheduler state machine.
+     * - Forwards completed event confirmations to FireIncidentSubsystem
+     * - Always transitions back to RECEIVE_FROM_FIS after processing
+     * - Ensures fire subsystem receives completion notifications
+     *   even if multiple confirmations are queued
+     */
+    private void handleSendConfirmation() {
+        if (!confirmationPackages.isEmpty()) {
+            sendUDPMessageFIS(confirmationPackages.poll());
+        }
+        currentState = SchedulerState.RECEIVE_FROM_FIS;
     }
 
     /**
@@ -116,44 +284,44 @@ public class Scheduler implements Runnable {
      */
     @Override
     public void run() {
-        int i = 0;
+
+        System.out.println("["+this.name + "] subsystem started..."); // Prints out a message that the FIS has started
 
         // Loop to Read Input Events from FireIncidentSubsystem, sends Event to DroneSubsystem, and handles confirmation messages passing
-        while (i < 10) {
-
-            RelayPackage receivedPackage = relayBuffer.getRelayPackage(this.systemType);
-            // Check for RelayPackage from FireIncidentSubsystem
-            if (receivedPackage != null) {
-                // Received Zone Package
-                if (receivedPackage.getZone() != null) {
-                    this.addZones(receivedPackage.getZone(), this.systemType, this.name);
-                // Received Event Package
-                } else {
-                    handleSchedulerState(receivedPackage.getEvent(), receivedPackage.getRelayPackageID(), null); // Calls the function to handle the state event of receiving from the FIS
-                }
-            }
-
-            //Send the highest-priority event to the Drone
-            if (!this.inputEvents.isEmpty()) {
-
-                //Send highest-priority event to the drone subsystem
-                handleSchedulerState(this.inputEvents.poll(), null, null); // Calls the function to handle the state event of receiving from the FIS
-
+        while (true) {
+            switch (currentState) {
+                // Check for ReplayPackage that was sent from the FIS
+                case RECEIVE_FROM_FIS:
+                    handleReceiveFromFIS();
+                    break;
+                //Send the highest-priority event to the DroneSubsystem
+                case SEND_TO_DSS:
+                    handleSendToDSS();
+                    break;
                 //Check if there is any event back from the Drone
-                InputEvent receivedEvent = eventBuffer.getInputEvent(this.systemType);
-
-                if (receivedEvent != null) {
-                    handleSchedulerState(receivedEvent, null, null);
-                }
+                case CHECK_DSS_RESPONSE:
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    handleCheckDSSResponse();
+                    break;
+                //Send confirmation packages back to the FireIncidentSubsystem
+                case SEND_CONFIRMATION:
+                    handleSendConfirmation();
+                    break;
             }
-
-            //Send confirmation packages back to the FireIncidentSubsystem
-            if (!this.confirmationPackages.isEmpty()) {
-                handleSchedulerState(null, null, this.confirmationPackages.poll());
-            }
-            i++;
         }
     }
 
 
+    /**
+     *  Main method to run the thread.
+     */
+    public static void main(String[] args) {
+        Scheduler scheduler = new Scheduler("Scdlr");
+        Thread scheduler_t1 = new Thread(scheduler);
+        scheduler_t1.start();
+    }
 }

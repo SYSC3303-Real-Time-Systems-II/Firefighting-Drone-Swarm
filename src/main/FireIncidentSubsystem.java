@@ -1,5 +1,5 @@
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
+import java.net.*;
 import java.time.LocalTime;
 import java.time.Duration;
 import java.util.*;
@@ -7,16 +7,19 @@ import java.util.*;
 /**
  * FireIncidentSubsystem class is responsible for reading fire incident data and zone information
  * from input files, and sending this data to the Scheduler via a RelayBuffer.
- *
  */
 public class FireIncidentSubsystem implements Runnable {
 
-    private String name;                            // Name of the subsystem
-    private Systems systemType;                     // Type of the system (FireIncidentSubsystem)
-    private Queue<InputEvent> inputEvents;          // Queue of input events to be processed
-    private ArrayList<Zone> zonesList;              // List of zones read from the input file
-    private LocalTime current_time;                 // Current time for simulating event timing
-    private RelayBuffer relayBuffer;                // Buffer for communication with the Scheduler
+    private String name;
+    private Systems systemType;
+    private Queue<InputEvent> inputEvents;
+    private ArrayList<Zone> zonesList;
+    private LocalTime current_time;
+    private DatagramSocket sendReceiveSocket;
+    private FireIncidentSubsystemState currentState = FireIncidentSubsystemState.SENDING_DATA;
+    private boolean zonesSent = false;
+    private int eventCounter = 0;
+    private long lastSendTime = 0;
 
     /**
      * Constructs a FireIncidentSubsystem object.
@@ -24,15 +27,19 @@ public class FireIncidentSubsystem implements Runnable {
      * @param name               The name of the subsystem.
      * @param inputEventFileName The name of the file containing input events.
      * @param inputZoneFileName  The name of the file containing zone information.
-     * @param relayBuffer        The RelayBuffer used for communication with the Scheduler.
      */
-    public FireIncidentSubsystem(String name, String inputEventFileName, String inputZoneFileName,RelayBuffer relayBuffer){
-        this.name = name;
-        this.systemType = Systems.FireIncidentSubsystem;
-        this.inputEvents = readInputEvents(inputEventFileName);
-        this.zonesList = readZones(inputZoneFileName);
-        this.relayBuffer = relayBuffer;
-        this.current_time = null;
+    public FireIncidentSubsystem(String name, String inputEventFileName, String inputZoneFileName) {
+        try {
+            this.name = name;
+            this.systemType = Systems.FireIncidentSubsystem;
+            this.inputEvents = readInputEvents(inputEventFileName);
+            this.zonesList = readZones(inputZoneFileName);
+            this.current_time = null;
+            this.sendReceiveSocket = new DatagramSocket(4000);
+            this.sendReceiveSocket.setSoTimeout(4000); // 4-second timeout
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -110,6 +117,71 @@ public class FireIncidentSubsystem implements Runnable {
         return zonesList;
     }
 
+    /**
+     * This is a method used to serialize a relay package to be sent to the Scheduler. This will help in keeping the object
+     * and its attributes.
+     *
+     * @param relayPackage the relay package being serialized.
+     * @return the array of bytes for the serialized relay package
+     */
+
+    private byte[] serializeRelayPackage(RelayPackage relayPackage) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream(); // Creates a byte aray object
+        try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) { // Wraps it around an output object
+            objectStream.writeObject(relayPackage);  // Write the RelayPackage object to the stream
+            objectStream.flush(); // Flushes after it writes the serialized array of bytes
+        }
+        return byteStream.toByteArray();  // Return the byte array
+    }
+
+    /**
+     * This is a method used to deserialize a relay package from the Scheduler. This is again helpful in keeping the
+     * object and its attributes that was sent.
+     * @param receivePacket The packets to be received and deserialized into an InputEvent object.
+     * @return the relay package that was received from scheduler.
+     *
+     */
+    private RelayPackage deserializeRelayPackage(DatagramPacket receivePacket) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(receivePacket.getData(), 0, receivePacket.getLength());
+        try (ObjectInputStream objectStream = new ObjectInputStream(byteStream)) {
+            return (RelayPackage) objectStream.readObject();  // Read the object from the byte array
+        }
+    }
+
+    /**
+     * A method that is used to handle sending a package to the Scheduler that has been polled.
+     * @param inputEventPackage The relay package being sent to the Scheduler.
+     */
+    private void sendUDPMessage(RelayPackage inputEventPackage){
+        try{
+            byte[] message = serializeRelayPackage(inputEventPackage);  // Serializes the RelayPackage by passing it to the method
+
+            DatagramPacket sendPacket = new DatagramPacket(message, message.length, InetAddress.getLocalHost(), 5000); // The packet that will be sent to the scheduler which has a port of 5000
+            System.out.println("["+this.name + "] SENDING --> " + inputEventPackage.getRelayPackageID() + " TO: " + Systems.Scheduler);
+            sendReceiveSocket.send(sendPacket); // Sends the packet to the scheduler
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * A method that is used to handle when a package has been sent by the scheduler for acknowledgment.
+     */
+    private void receiveUDPMessage(){
+        try{
+            byte[] receiveData = new byte[6000];
+            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // The received data packet that weill be received from teh scheduler
+            sendReceiveSocket.receive(receivePacket); // Receives the packet
+
+            // Deserialize the byte array into a RelayPackage object
+            RelayPackage receivedPackage = deserializeRelayPackage(receivePacket);
+
+            System.out.println("["+this.name + "] Received <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.Scheduler); // Prints out the confirmation message that it got the data from the scheduler
+        }catch (IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+    }
+
 
     /**
      * The run method is executed when the thread starts.
@@ -119,51 +191,125 @@ public class FireIncidentSubsystem implements Runnable {
      */
     @Override
     public void run() {
-        int i = 1;
+        System.out.println("["+this.name + "] subsystem started...");
 
-        //Send the zone package to the Scheduler
-        RelayPackage zonePackage = new RelayPackage("ZONE_PKG_1", Systems.Scheduler, null, zonesList);
-        relayBuffer.addReplayPackage(zonePackage);
-        System.out.println(this.name + ": SENDING --> " + zonePackage.getRelayPackageID() + " TO: " + zonePackage.getReceiverSystem());
+        // Initial zone package
+        sendZonePackage();
 
-            //Loop to send Input Events to Schduler and receive acknowledgments back
-        while (i <= 10) {
+        while (true) {
+            switch (currentState) {
+                case SENDING_DATA:
+                    handleSendingState();
+                    break;
 
-            //Send input events to the Scheduler (if available)
-            if (!this.inputEvents.isEmpty()) {
+                case WAITING_CONFIRMATION:
+                    handleWaitingState();
+                    break;
 
-                InputEvent inputEvent = inputEvents.remove();
-                // Simulate time passing if this is not the first event
-                if (current_time == null) {
-                    current_time = inputEvent.getTime();
-                } else if (!current_time.equals(inputEvent.getTime())) {
-                    Duration duration = Duration.between(current_time, inputEvent.getTime());
-                    current_time = inputEvent.getTime();
-                    try {
-                        Thread.sleep(duration.toMinutes() * 100); // Simulate time delay
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                //Place ReplayPackage in relayBuffer for Scheduler
-                RelayPackage inputEventPackage = new RelayPackage("INPUT_EVENT_" + i, Systems.Scheduler, inputEvent, null);
-                System.out.println(this.name + ": SENDING --> " + inputEventPackage.getRelayPackageID() + " TO: " + inputEventPackage.getReceiverSystem());
-                relayBuffer.addReplayPackage(inputEventPackage);
-
-            // Check ReplayPackage acknowledgments from Scheduler
-            } else {
-                RelayPackage receivedPackage = relayBuffer.getRelayPackage(this.systemType);
-                if (receivedPackage != null) {
-                    System.out.println(this.name + ": Received <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.Scheduler);
-                } else {
-                    System.out.println(this.name + ": No item for FireIncidentSubsystem, retrying...");
-                    i--; // Retry the same iteration
-                }
+                case IDLE:
+                    handleIdleState();
+                    break;
             }
-            i++;
         }
     }
 
+    private void sendZonePackage() {
+        RelayPackage zonePackage = new RelayPackage(
+                "ZONE_PKG_1",
+                Systems.Scheduler,
+                null,
+                zonesList
+        );
+        sendUDPMessage(zonePackage);
+        zonesSent = true;
+    }
+
+    private void handleSendingState() {
+        if (!zonesSent) {
+            sendZonePackage();
+        } else if (!inputEvents.isEmpty()) {
+            InputEvent event = inputEvents.remove();
+            RelayPackage pkg = new RelayPackage(
+                    "INPUT_EVENT_" + eventCounter++,
+                    Systems.Scheduler,
+                    event,
+                    null
+            );
+            sendUDPMessage(pkg);
+            simulateTimeDelay(event);
+        }
+
+        lastSendTime = System.currentTimeMillis();
+        currentState = FireIncidentSubsystemState.WAITING_CONFIRMATION;
+    }
+
+    private void handleWaitingState() {
+        try {
+            byte[] buffer = new byte[6000];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+            sendReceiveSocket.receive(packet);
+
+            RelayPackage received = deserializeRelayPackage(packet);
+            System.out.println("["+this.name + "] Received confirmation for " + received.getRelayPackageID());
+
+            // Only switch to sending if we have more events
+            currentState = inputEvents.isEmpty() ? FireIncidentSubsystemState.IDLE : FireIncidentSubsystemState.SENDING_DATA;
+
+        } catch (SocketTimeoutException e) {
+            // Resend if we have pending events and 4 seconds have passed
+            if (!inputEvents.isEmpty() && (System.currentTimeMillis() - lastSendTime) > 4000) {
+                currentState = FireIncidentSubsystemState.SENDING_DATA;
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handleIdleState() {
+        try {
+            // Still listen for potential late confirmations
+            byte[] buffer = new byte[6000];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+            sendReceiveSocket.receive(packet);
+
+            RelayPackage received = deserializeRelayPackage(packet);
+            System.out.println("["+this.name + "] Received confirmation for " + received.getRelayPackageID());
+
+        } catch (SocketTimeoutException e) {
+            // Expected in idle state
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void simulateTimeDelay(InputEvent event) {
+        if (current_time == null) {
+            current_time = event.getTime();
+            return;
+        }
+
+        Duration duration = Duration.between(current_time, event.getTime());
+        if (!duration.isZero()) {
+            try {
+                // Scale real-world time (1 minute = 100ms)
+                Thread.sleep(duration.toMinutes() * 100);
+                current_time = event.getTime();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    /**
+     * Main method to run the thread.
+     */
+    public static void main(String[] args) {
+
+        // Initialize and create thread for the FireIncidentSubsystem
+        FireIncidentSubsystem fis1 = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv");
+        Thread fis1_t1 = new Thread(fis1);
+        fis1_t1.start();
+    }
 }
 
 

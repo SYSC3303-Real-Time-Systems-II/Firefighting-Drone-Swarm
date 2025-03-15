@@ -7,8 +7,6 @@ import java.time.*;
  * @author Rami Ayoub
  * @version 2.0
  */
-
-
 public class Drone implements Runnable{
     private final int ID; // This will be the ID of the drone
     private final double ACCELERATION_TIME = 0.051; // The acceleration time of the drone
@@ -165,10 +163,10 @@ public class Drone implements Runnable{
 
     @Override
     public void run() {
-            while (true) {
-                droneState.handle(this);
-            }
+        while (true) {
+            droneState.handle(this);
         }
+    }
 }
 
 
