@@ -80,56 +80,56 @@ Example output:
 
 *FireIncident*
 
-[FIS] subsystem started...
-[FIS] SENDING --> ZONE_PKG_1 TO: Scheduler
-[FIS] SENDING --> INPUT_EVENT_0 TO: Scheduler
-[FIS] Received confirmation for DRONE_CONFIRMATION
-[FIS] SENDING --> INPUT_EVENT_1 TO: Scheduler
-[FIS] Received confirmation for DRONE_CONFIRMATION
+- [FIS] subsystem started...
+- [FIS] SENDING --> ZONE_PKG_1 TO: Scheduler
+- [FIS] SENDING --> INPUT_EVENT_0 TO: Scheduler
+- [FIS] Received confirmation for DRONE_CONFIRMATION
+- [FIS] SENDING --> INPUT_EVENT_1 TO: Scheduler
+- [FIS] Received confirmation for DRONE_CONFIRMATION
 
 *Scheduler*
 
-[Scdlr] subsystem started...
-[Scdlr] Added zones: {1=Zone ID: 1 Zone Start: (0.0, 0.0) Zone End: (700.0, 600.0) Zone Center: (350.0, 300.0), 2=Zone ID: 2 Zone Start: (0.0, 600.0) Zone End: (650.0, 1500.0) Zone Center: (325.0, 1050.0)}
-[Scdlr] RECEIVED AN EVENT <-- INPUT_EVENT_0 FROM: FireIncidentSubsystem
-[Scdlr] SENDING THE EVENT --> Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High TO: DroneSubsystem
-[Scdlr] RECEIVED EVENT <-- Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High FROM: DroneSubsystem
-[Scdlr] SENDING CONFIRMATION FOR --> Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High TO: FireIncidentSubsystem
-[Scdlr] RECEIVED AN EVENT <-- INPUT_EVENT_1 FROM: FireIncidentSubsystem
-[Scdlr] SENDING THE EVENT --> Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate TO: DroneSubsystem
-[Scdlr] RECEIVED EVENT <-- Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate FROM: DroneSubsystem
-[Scdlr] SENDING CONFIRMATION FOR --> Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate TO: FireIncidentSubsystem
+- [Scdlr] subsystem started...
+- [Scdlr] Added zones: {1=Zone ID: 1 Zone Start: (0.0, 0.0) Zone End: (700.0, 600.0) Zone Center: (350.0, 300.0), 2=Zone ID: 2 Zone Start: (0.0, 600.0) Zone End: (650.0, 1500.0) Zone Center: (325.0, 1050.0)}
+- [Scdlr] RECEIVED AN EVENT <-- INPUT_EVENT_0 FROM: FireIncidentSubsystem
+- [Scdlr] SENDING THE EVENT --> Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High TO: DroneSubsystem
+- [Scdlr] RECEIVED EVENT <-- Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High FROM: DroneSubsystem
+- [Scdlr] SENDING CONFIRMATION FOR --> Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High TO: FireIncidentSubsystem
+- [Scdlr] RECEIVED AN EVENT <-- INPUT_EVENT_1 FROM: FireIncidentSubsystem
+- [Scdlr] SENDING THE EVENT --> Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate TO: DroneSubsystem
+- [Scdlr] RECEIVED EVENT <-- Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate FROM: DroneSubsystem
+- [Scdlr] SENDING CONFIRMATION FOR --> Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate TO: FireIncidentSubsystem
 
 *Drone*
 
-Drone2: WAITING FOR EVENT
-Drone5: WAITING FOR EVENT
-Drone4: WAITING FOR EVENT
-Drone1: WAITING FOR EVENT
-Drone3: WAITING FOR EVENT
-[DS] subsystem started with 5 drones
-[DS] received event: Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High
-[DS] Assigned Drone1 to event
-Drone1 GOT EVENTTime: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High
-Drone1: TRAVELING TO ZONE: 1 : AT TIME: 14:00:15
-Drone1: ASCENDING AT TIME: 14:00:37
-Drone1: CRUISING TO ZONE: 1 : AT TIME: 14:00:37
-Drone1: WATER DROPPED, RETURNING TO BASE: AT TIME: 14:00:37
-Drone1: ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: 14:00:55
-Drone1: WAITING FOR EVENT
-[DS] Drone1: COMPLETED EVENT
-[DS] SENDING EVENT TO SCHEDULER --> Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High
-[DS] received event: Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate
-[DS] Assigned Drone1 to event
-Drone1 GOT EVENTTime: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate
-Drone1: TRAVELING TO ZONE: 2 : AT TIME: 14:10:01
-Drone1: ASCENDING AT TIME: 14:10:53
-Drone1: CRUISING TO ZONE: 2 : AT TIME: 14:10:53
-Drone1: WATER DROPPED, RETURNING TO BASE: AT TIME: 14:10:53
-Drone1: ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: 14:11:41
-Drone1: WAITING FOR EVENT
-[DS] Drone1: COMPLETED EVENT
-[DS] SENDING EVENT TO SCHEDULER --> Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate
+- Drone2: WAITING FOR EVENT
+- Drone5: WAITING FOR EVENT
+- Drone4: WAITING FOR EVENT
+- Drone1: WAITING FOR EVENT
+- Drone3: WAITING FOR EVENT
+- [DS] subsystem started with 5 drones
+- [DS] received event: Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High
+- [DS] Assigned Drone1 to event
+- Drone1 GOT EVENTTime: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High
+- Drone1: TRAVELING TO ZONE: 1 : AT TIME: 14:00:15
+- Drone1: ASCENDING AT TIME: 14:00:37
+- Drone1: CRUISING TO ZONE: 1 : AT TIME: 14:00:37
+- Drone1: WATER DROPPED, RETURNING TO BASE: AT TIME: 14:00:37
+- Drone1: ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: 14:00:55
+- Drone1: WAITING FOR EVENT
+- [DS] Drone1: COMPLETED EVENT
+- [DS] SENDING EVENT TO SCHEDULER --> Time: 14:00:15 Zone: 1 Event Type: FIRE_DETECTED Severity: High
+- [DS] received event: Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate
+- [DS] Assigned Drone1 to event
+- Drone1 GOT EVENTTime: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate
+- Drone1: TRAVELING TO ZONE: 2 : AT TIME: 14:10:01
+- Drone1: ASCENDING AT TIME: 14:10:53
+- Drone1: CRUISING TO ZONE: 2 : AT TIME: 14:10:53
+- Drone1: WATER DROPPED, RETURNING TO BASE: AT TIME: 14:10:53
+- Drone1: ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: 14:11:41
+- Drone1: WAITING FOR EVENT
+- [DS] Drone1: COMPLETED EVENT
+- [DS] SENDING EVENT TO SCHEDULER --> Time: 14:10:01 Zone: 2 Event Type: DRONE_REQUEST Severity: Moderate
 
 
 ## Contributions (Iteration 3)
