@@ -60,7 +60,6 @@ finds an available drone to handle the event. The communication between the thre
    - Alerts the drone subsystem when it has arrived to a zone which tells the scheduler.
 
 
-
 ## Input Files
 
 1. **Sample_event_file.csv**:
