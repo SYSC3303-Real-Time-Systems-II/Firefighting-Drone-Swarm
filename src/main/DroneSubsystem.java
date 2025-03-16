@@ -176,16 +176,8 @@ public class DroneSubsystem implements Runnable {
             }
         }
 
-        // Mark the chosen drone as having changed tasks
-//        if (closestDrone != null) {
-//            closestDrone.setChangedEvent(true);
-//        }
-
-        //System.out.println("for event ==========="+event.toString()+ "\n CHOSEN DRONE ===========" + (closestDrone != null ? closestDrone.getName() : "None") + " | State: " + (closestDrone != null ? closestDrone.getDroneState() : "N/A"));
         return closestDrone;
     }
-
-//System.out.println("for event ==========="+event.toString()+ "\n CHOSEN DRONE ===========" + (closestDrone != null ? closestDrone.getName() : "None") + " | State: " + (closestDrone != null ? closestDrone.getDroneState() : "N/A"));
 
     private Drone chooseDroneAlgorithm(InputEvent event) {
         Coordinate eventCoords = event.getZone().getZoneCenter();

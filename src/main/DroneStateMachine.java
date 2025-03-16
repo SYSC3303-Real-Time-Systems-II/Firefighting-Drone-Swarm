@@ -3,20 +3,16 @@ interface DroneStateMachine {
 }
 
 abstract class InBaseState implements DroneStateMachine {
-
     @Override
     public abstract void handle(Drone context);
-
 }
 
 abstract class InFieldState implements DroneStateMachine {
-
     @Override
     public abstract void handle(Drone context);
 }
 
 class AvailableState extends InBaseState {
-
     @Override
     public void handle(Drone context) {
         //lock and wait until a task is assigned
@@ -88,42 +84,6 @@ class CruisingState extends InFieldState {
     }
 }
 
-
-//    @Override
-//    public void handle(Drone context) {
-//        double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
-//        int currentTime = 0;
-//
-//        while (currentTime < travelZoneTime){
-//
-//            if (travelZoneTime - currentTime < 1) {
-//                double timeLeft = travelZoneTime - currentTime;
-//                context.updateLocation(timeLeft);
-//                context.sleepFor(timeLeft);
-//            } else {
-//                context.updateLocation(1);
-//                context.sleepFor(1);
-//            }
-//
-//            currentTime += 1;
-//            //System.out.println(context.getName() +  " Current Location: " + context.getCurrentCoordinates());
-//        }
-//
-//
-//       // System.out.println("Travel Zone Time: " + travelZoneTime);
-//        // context.sleepFor(travelZoneTime);
-//
-//        System.out.println("["+context.getName() + "] CRUISING TO ZONE: " + context.getCurrentEvent().getZoneId() +  " : AT TIME: " + context.getLocalTime());
-//        context.setDroneState(new DropAgentState());
-//    }
-//}
-
-class ReCalculatingState extends InFieldState {
-    @Override
-    public void handle(Drone context) {
-
-    }
-}
 
 class DropAgentState extends InFieldState {
     @Override
