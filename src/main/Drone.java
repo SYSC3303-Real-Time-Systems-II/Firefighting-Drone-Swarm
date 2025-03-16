@@ -23,8 +23,10 @@ public class Drone implements Runnable{
     private double waterCapacity = MAX_WATER_CAPACITY;
     private double batteryCapacity = MAX_BATTERY_CAPACITY;
 
+
+    private boolean changedEvent;
     private DroneStateMachine droneState; // This will be used for the drones state
-    private Coordinate currentCoords;
+    private Coordinate currentCoordinates;
     private InputEvent assignedEvent;
     private InputEvent currentEvent;
     private InputEvent completedEvent;
@@ -37,14 +39,20 @@ public class Drone implements Runnable{
         this.name = "Drone" + ID;
         this.localTime = null;
         this.droneState = new AvailableState();
-        this.currentCoords = new Coordinate(0,0);
+        this.currentCoordinates = new Coordinate(0,0);
         this.assignedEvent = null;
         this.completedEvent = null;
+        this.changedEvent = false;
 
     }
 
-    public Coordinate getCurrent_coords() {
-        return currentCoords;
+    // Synchronized getter for changedEvent
+    public synchronized boolean isChangedEvent() {
+        return changedEvent;
+    }
+
+    public Coordinate getCurrentCoordinates() {
+        return currentCoordinates;
     }
 
     /**
@@ -61,6 +69,11 @@ public class Drone implements Runnable{
      */
     public String getName() {
         return name;
+    }
+
+    // Synchronized setter for changedEvent
+    public synchronized void setChangedEvent(boolean changedEvent) {
+        this.changedEvent = changedEvent;
     }
 
     /**
@@ -147,8 +160,8 @@ public class Drone implements Runnable{
     }
 
     public double calculateZoneTravelTime(InputEvent event){
-        Coordinate fire_coords = event.getZone().getZoneCenter();
-        return Math.sqrt(Math.pow(fire_coords.getX() - currentCoords.getX(), 2) + Math.pow(fire_coords.getY() - currentCoords.getY(), 2)) / TOP_SPEED;
+        Coordinate fireCoordinates = event.getZone().getZoneCenter();
+        return Math.sqrt(Math.pow(fireCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(fireCoordinates.getY() - currentCoordinates.getY(), 2)) / TOP_SPEED;
     }
 
     /**
@@ -176,7 +189,7 @@ public class Drone implements Runnable{
         completedEvent = event;
     }
 
-    public void setCurrentEvent(InputEvent event){
+    public synchronized void setCurrentEvent(InputEvent event){
         currentEvent = event;
     }
 
@@ -184,7 +197,7 @@ public class Drone implements Runnable{
         this.droneState = droneState;
     }
 
-    public InputEvent getAssignedEvent() {
+    public synchronized InputEvent getAssignedEvent() {
         return assignedEvent;
     }
 
@@ -192,8 +205,40 @@ public class Drone implements Runnable{
         return localTime;
     }
 
-    public InputEvent getCurrentEvent() {
+    public synchronized InputEvent getCurrentEvent() {
         return currentEvent;
+    }
+
+
+    public void checkIfTaskSwitch() {
+        InputEvent assignedTask = getAssignedEvent();
+        if (assignedTask != null) {
+            InputEvent oldTask = getCurrentEvent();
+            setAssignedEvent(null);
+            setCurrentEvent(assignedTask);
+//            System.out.println("[" + name + "] TASK SWITCHED FROM " + (oldTask != null ? oldTask.getZoneId() : "NONE") + " TO " + assignedTask.getZoneId());
+            System.out.println("[" + name + "] TASK SWITCHED " +  oldTask.getEventID() + " --> " + assignedTask.getEventID());
+
+            // Reset state to handle new task (e.g., recalculate path)
+            if (droneState instanceof CruisingState) {
+                setDroneState(new AscendingState()); // Restart ascent for new task
+            }
+        }
+    }
+
+
+    public void updateLocation(double seconds){
+        Coordinate fireCoordinates = currentEvent.getZone().getZoneCenter();
+
+        double distanceToTravel = Math.sqrt(Math.pow(fireCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(fireCoordinates.getY() - currentCoordinates.getY(), 2));
+
+        double directionX = ((fireCoordinates.getX() - currentCoordinates.getX()) / distanceToTravel);
+        double directionY = ((fireCoordinates.getY() - currentCoordinates.getY()) / distanceToTravel);
+
+        double updatedX = currentCoordinates.getX() + directionX * TOP_SPEED * seconds;
+        double updatedY = currentCoordinates.getY() + directionY * TOP_SPEED * seconds;
+
+        currentCoordinates = new Coordinate(updatedX, updatedY);
     }
 
     @Override
