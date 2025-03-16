@@ -139,7 +139,7 @@ public class DroneSubsystem implements Runnable {
         return closestDrone;
     }
 
-    private double calculateDistance(Coordinate a, Coordinate b) {
+    public double calculateDistance(Coordinate a, Coordinate b) {
         return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) +
                 Math.pow(a.getY() - b.getY(), 2));
     }

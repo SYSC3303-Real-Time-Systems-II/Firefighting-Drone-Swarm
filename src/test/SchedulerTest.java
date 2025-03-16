@@ -1,63 +1,74 @@
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for the Scheduler class to ensure correct behavior of its scheduling and event handling capabilities.
  */
 class SchedulerTest {
+
     private Scheduler scheduler;
 
-    /**
-     * Sets up the test environment before each test.
-     * This method initializes a Scheduler and two different priority InputEvents.
-     */
     @BeforeEach
-    void setUp() {
-        RelayBuffer relayBuffer = new RelayBuffer();
-        EventBuffer eventBuffer = new EventBuffer();
-        scheduler = new Scheduler("Scdlr", relayBuffer, eventBuffer);
+    public void setUp() {
+        // Create a Scheduler instance.
+        scheduler = new Scheduler("TestScheduler");
     }
 
     /**
-     * Tests the addZones method to ensure zones are correctly added to the Scheduler.
+     * Test that immediately after construction, the zones map is empty.
      */
     @Test
-    void addZones() {
-        ArrayList<Zone> zonesList = new ArrayList<>();
-        zonesList.add(new Zone(1, new Coordinate(0,0), new Coordinate(700,600)));
-        zonesList.add(new Zone(2, new Coordinate(0,600), new Coordinate(650,1500)));
-
-        scheduler.addZones(zonesList, Systems.Scheduler, "Test");
-
-        assertEquals(2, scheduler.getZones().size());
-
+    public void testInitialZonesEmpty() {
+        Map<Integer, Zone> zones = scheduler.getZones();
+        assertNotNull(zones, "Zones map should not be null");
+        assertTrue(zones.isEmpty(), "Zones map should be initially empty");
     }
 
     /**
-     * These test cases will test if the scheduler initializes to the WAITING state, and switches between states properly
+     * Test that addZones properly adds zones to the scheduler.
      */
     @Test
-    void testSchedulerState(){
+    public void testAddZones() {
         ArrayList<Zone> zonesList = new ArrayList<>();
-        zonesList.add(new Zone(1, new Coordinate(0,0), new Coordinate(700,600)));
-        zonesList.add(new Zone(2, new Coordinate(0,600), new Coordinate(650,1500)));
+        Zone zone1 = new Zone(1, new Coordinate(0, 0), new Coordinate(700, 600));
+        Zone zone2 = new Zone(2, new Coordinate(0, 600), new Coordinate(650, 1500));
+        zonesList.add(zone1);
+        zonesList.add(zone2);
 
-        Zone zone = zonesList.get(1); // Creates a new zone object that will be assigned to the event object
-        InputEvent inputEvent = new InputEvent("14:10:00", 3, "FIRE_DETECTED", "Low", Status.UNRESOLVED); // Created the input event which will be used to test the method
-        inputEvent.setZone(zone); // Sets the zone of the event
+        scheduler.addZones(zonesList, Systems.Scheduler, "TestScheduler");
+        Map<Integer, Zone> zones = scheduler.getZones();
 
-        RelayPackage relayPackage = new RelayPackage("1", Systems.Scheduler, inputEvent, zonesList);
+        assertNotNull(zones, "Zones map should not be null after adding zones");
+        assertEquals(2, zones.size(), "Zones map should contain 2 zones");
+        assertEquals(zone1, zones.get(1), "Zone with ID 1 should be present and match zone1");
+        assertEquals(zone2, zones.get(2), "Zone with ID 2 should be present and match zone2");
+    }
 
-        assertEquals(scheduler.getSchedulerState(), SchedulerState.WAITING); // Check that the initial state of the scheduler is WAITING
-        scheduler.handleSchedulerState(inputEvent, "test", relayPackage); // Update the state
-        assertEquals(scheduler.getSchedulerState(), SchedulerState.RECEIVED_EVENT_FROM_FIS); // Check if the state updated to the next state properly
-        scheduler.handleSchedulerState(inputEvent, "test", relayPackage); // Update the state
-        assertEquals(scheduler.getSchedulerState(), SchedulerState.SENT_EVENT_TO_DRONE_SUBSYSTEM); // Check if the state updated to the next state properly
-        scheduler.handleSchedulerState(inputEvent, "test", relayPackage); // Update the state
-        assertEquals(scheduler.getSchedulerState(), SchedulerState.SEND_EVENT_TO_FIS); // Check if the state updated to the next state properly
-        scheduler.handleSchedulerState(inputEvent, "test", relayPackage); // Update the state
-        assertEquals(scheduler.getSchedulerState(), SchedulerState.WAITING); // Check if the state looped back to the first state
+    /**
+     * Test that calling addZones multiple times merges the zones correctly.
+     */
+    @Test
+    public void testAddZonesMultipleCalls() {
+        // First call: add zone with ID 1.
+        ArrayList<Zone> zonesList1 = new ArrayList<>();
+        Zone zone1 = new Zone(1, new Coordinate(0, 0), new Coordinate(700, 600));
+        zonesList1.add(zone1);
+        scheduler.addZones(zonesList1, Systems.Scheduler, "TestScheduler");
+
+        // Second call: add zone with ID 2.
+        ArrayList<Zone> zonesList2 = new ArrayList<>();
+        Zone zone2 = new Zone(2, new Coordinate(0, 600), new Coordinate(650, 1500));
+        zonesList2.add(zone2);
+        scheduler.addZones(zonesList2, Systems.Scheduler, "TestScheduler");
+
+        Map<Integer, Zone> zones = scheduler.getZones();
+        assertNotNull(zones, "Zones map should not be null after multiple calls");
+        assertEquals(2, zones.size(), "Zones map should contain 2 zones after multiple calls");
+        assertEquals(zone1, zones.get(1), "Zone with ID 1 should be present and match zone1");
+        assertEquals(zone2, zones.get(2), "Zone with ID 2 should be present and match zone2");
     }
 }

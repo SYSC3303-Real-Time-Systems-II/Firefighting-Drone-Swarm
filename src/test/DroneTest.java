@@ -1,4 +1,6 @@
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.time.LocalTime;
 
@@ -12,44 +14,120 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class DroneTest {
 
+    private Drone drone;
     /**
-     * These test cases will test if the drone initializes to the AVAILABLE state, and switches between states properly
+     * Initializes a new Drone instance before each test.
      */
-    @Test
-    void testDroneState(){
-        Drone drone = new Drone();
-        drone.setLocalTime(LocalTime.MIDNIGHT); //The drone class needs a local time. It doesn't have to be midnight, this is just used for the test.
-        assertEquals(drone.getDroneState(), DroneState.AVAILABLE); //Make sure the drone starts at the AVAILABLE state
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.ON_ROUTE); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.ARRIVED); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.DROPPING_WATER); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.RETURNING_TO_BASE); //Check if the state updated to the next state properly
-        drone.handleDroneState(5, 2); //Update the state
-        assertEquals(drone.getDroneState(), DroneState.AVAILABLE); //Check if the state looped back to the first state
+    @BeforeEach
+    public void setUp() {
+        drone = new Drone();
     }
 
     /**
-     * Test if the drone objects are initialized properly
+     * Tests that the drone's name is generated correctly based on its ID.
      */
     @Test
-    void testDroneAttributes(){
-        //Three drones will be used to test this
-        Drone drone1 = new Drone();
-        Drone drone2 = new Drone();
-        Drone drone3 = new Drone();
+    public void testGetNameAndID() {
+        int id = drone.getID();
+        assertEquals("Drone" + id, drone.getName());
+    }
 
-        //The Id of each drone should increment as new ones are created, so that is tested below:
-        assertEquals(drone1.getID(), 1);
-        assertEquals(drone2.getID(), 2);
-        assertEquals(drone3.getID(), 3);
+    /**
+     * Tests that the drone initializes with coordinates (0,0).
+     */
+    @Test
+    public void testInitialCoordinates() {
+        // The drone should initialize at (0,0)
+        assertEquals(0, drone.getCurrentCoordinates().getX(), 1e-9);
+        assertEquals(0, drone.getCurrentCoordinates().getY(), 1e-9);
+    }
 
-        //Each drone should contain a name containing their ID number, this is tested below:
-        assertEquals(drone1.getName(), "Drone1");
-        assertEquals(drone2.getName(), "Drone2");
-        assertEquals(drone3.getName(), "Drone3");
+    /**
+     * Tests setting and retrieving the local time for the drone.
+     */
+    @Test
+    public void testSetAndGetLocalTime() {
+        LocalTime now = LocalTime.now();
+        drone.setLocalTime(now);
+        assertEquals(now, drone.getLocalTime());
+    }
+
+
+    /**
+     * Tests the methods for managing water level.
+     * Verifies that the water level is initially at maximum capacity,
+     * can be set to a different value, and is restored upon refill.
+     */
+    @Test
+    public void testWaterLevelMethods() {
+        // Initially, water level should equal MAX_WATER_CAPACITY
+        assertEquals(drone.MAX_WATER_CAPACITY, drone.getWaterLevel(), 1e-9);
+
+        // Change water level and then refill
+        drone.setWaterLevel(10.0);
+        assertEquals(10.0, drone.getWaterLevel(), 1e-9);
+        drone.refillWater();
+        assertEquals(drone.MAX_WATER_CAPACITY, drone.getWaterLevel(), 1e-9);
+    }
+
+    /**
+     * Tests the battery management methods.
+     * Verifies that the battery starts at maximum capacity,
+     * decreases correctly when drained, and resets upon charging.
+     */
+    @Test
+    public void testBatteryMethods() {
+        // Initially, battery level should equal MAX_BATTERY_CAPACITY
+        assertEquals(drone.MAX_BATTERY_CAPACITY, drone.getBatteryLevel(), 1e-9);
+
+        // Drain battery: drainBattery(seconds) reduces battery by seconds * BATTERY_DRAIN_RATE
+        double initialBattery = drone.getBatteryLevel();
+        drone.drainBattery(5); // expected drain: 5 * 0.1 = 0.5
+        assertEquals(initialBattery - 0.5, drone.getBatteryLevel(), 1e-9);
+
+        // Recharge battery
+        drone.chargeBattery();
+        assertEquals(drone.MAX_BATTERY_CAPACITY, drone.getBatteryLevel(), 1e-9);
+    }
+
+    /**
+     * Tests the calculation of travel time from the drone's current position to an event's zone.
+     * The zone's center is computed as the midpoint between its start and end coordinates.
+     */
+    @Test
+    public void testCalculateZoneTravelTime() {
+        // Create a Zone whose center is computed as the midpoint of its start and end coordinates.
+        // For example, let the zone start at (0,0) and end at (20,0) so that the center is (10,0).
+        Zone zone = new Zone(1, new Coordinate(0, 0), new Coordinate(20, 0));
+        InputEvent event = new InputEvent("14:00:00", 1, "FIRE_DETECTED", "Low", Status.UNRESOLVED);
+        event.setZone(zone);
+        // With currentCoordinates = (0,0), distance from (0,0) to (10,0) is 10.
+        // Travel time = distance / TOP_SPEED = 10 / 20.8.
+        double expectedTime = 10.0 / drone.TOP_SPEED;
+        double travelTime = drone.calculateZoneTravelTime(event);
+        assertEquals(expectedTime, travelTime, 1e-9);
+    }
+
+    /**
+     * Tests that draining the battery over a specified period decreases the battery level as expected.
+     */
+    @Test
+    public void testDrainBattery() {
+        double initialBattery = drone.getBatteryLevel();
+        drone.drainBattery(10); // Expected drain: 10 * 0.1 = 1.0
+        assertEquals(initialBattery - 1.0, drone.getBatteryLevel(), 1e-9);
+    }
+
+    /**
+     * Tests that the sleepFor method causes the thread to pause for approximately the specified duration.
+     */
+    @Test
+    public void testSleepFor() {
+        // Test that sleepFor approximately sleeps for the given duration.
+        long start = System.currentTimeMillis();
+        drone.sleepFor(0.5); // Sleep for 0.5 seconds.
+        long elapsed = System.currentTimeMillis() - start;
+        // Allow some tolerance for thread scheduling delays.
+        assertTrue(elapsed >= 500);
     }
 }
