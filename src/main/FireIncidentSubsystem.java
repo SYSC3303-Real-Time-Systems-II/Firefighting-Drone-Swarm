@@ -85,13 +85,16 @@ public class FireIncidentSubsystem implements Runnable {
             if (scanner.hasNextLine()) {
                 scanner.nextLine();
             }
+            int eventID = 1;
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine();
                 String[] parts = line.split(","); // Split by comma for CSV
 
+                String inputEventID = "InputEvent_"+eventID;
                 //Create InputEvent object and add to the inputEvents ArrayList
-                InputEvent event = new InputEvent(parts[0], Integer.parseInt(parts[1]), parts[2], parts[3],Status.UNRESOLVED);
+                InputEvent event = new InputEvent(inputEventID,parts[0], Integer.parseInt(parts[1]), parts[2], parts[3],Status.UNRESOLVED);
                 inputEvents.add(event);
+                eventID ++;
             }
             return inputEvents;
         } catch (FileNotFoundException e) {

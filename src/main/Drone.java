@@ -165,9 +165,9 @@ public class Drone implements Runnable{
             InputEvent oldTask = getCurrentEvent();
             setAssignedEvent(null);
             setCurrentEvent(assignedTask);
-            System.out.println("[" + name + "] TASK SWITCHED FROM "
-                    + (oldTask != null ? oldTask.getZoneId() : "NONE")
-                    + " TO " + assignedTask.getZoneId());
+//            System.out.println("[" + name + "] TASK SWITCHED FROM " + (oldTask != null ? oldTask.getZoneId() : "NONE") + " TO " + assignedTask.getZoneId());
+            System.out.println("[" + name + "] TASK SWITCHED " +  oldTask.getEventID() + " --> " + assignedTask.getEventID());
+
             // Reset state to handle new task (e.g., recalculate path)
             if (droneState instanceof CruisingState) {
                 setDroneState(new AscendingState()); // Restart ascent for new task

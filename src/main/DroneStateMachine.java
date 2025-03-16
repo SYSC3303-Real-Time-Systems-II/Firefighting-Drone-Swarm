@@ -30,8 +30,8 @@ class AvailableState extends InBaseState {
             context.setAssignedEvent(null);
 
         }
-        System.out.println("["+context.getName() + "] GOT EVENT: " + context.getCurrentEvent() + " AT TIME: " + context.getLocalTime());
         context.setLocalTime(context.getCurrentEvent().getTime());
+        System.out.println("["+context.getName() + "] GOT EVENT: " + context.getCurrentEvent().getEventID() + " AT TIME: " + context.getLocalTime());
         context.setLocalTime(context.getLocalTime().plusSeconds((long) context.getACCELERATION_TIME()));  // Adds the local time
         context.sleepFor(context.getACCELERATION_TIME()); // Simulates the acceleration time
         context.setDroneState(new AscendingState()); // The drone becomes on route to the fire zone

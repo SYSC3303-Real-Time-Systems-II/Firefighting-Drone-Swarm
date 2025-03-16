@@ -63,7 +63,7 @@ public class DroneSubsystem implements Runnable {
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
             socket.receive(packet);
             InputEvent event = deserializeEvent(packet.getData());
-            System.out.println("["+this.name + "] received event: " + event);
+            System.out.println("[" + this.name + "] RECEIVED EVENT: " + event.getEventID());
             pendingEvents.add(event);
             currentState = SubsystemState.RECEIVED_EVENT;
             return true;
@@ -78,8 +78,6 @@ public class DroneSubsystem implements Runnable {
 
     private void handleReceivedEventState() {
         List<InputEvent> eventsToProcess = new ArrayList<>(pendingEvents);
-        System.out.println("PENDING EVENTS ------ " + pendingEvents);
-
         for (InputEvent event : eventsToProcess) {
             Drone selectedDrone = chooseDroneAlgorithm22(event);
 
@@ -93,13 +91,13 @@ public class DroneSubsystem implements Runnable {
                     if (!pendingEvents.contains(selectedDroneCurrentEvent)) {
                         pendingEvents.add(selectedDroneCurrentEvent);
                     }
-                    System.out.println("SWITCHING DRONE ");
+                    System.out.println("[" + this.name + "] SWITCHING TASK FOR " + selectedDrone.getName());
                     selectedDrone.setChangedEvent(true);    //set to true stating that the drone will not take any new tasks until completed current task
                 }
 
+                System.out.println("[" + this.name + "] ASSIGNED " + selectedDrone.getName().toUpperCase() + " TO " + event.getEventID()+" ["+ event +"]");
                 selectedDrone.setAssignedEvent(event);
                 workingDrones.put(selectedDrone.getID(), selectedDrone);
-                System.out.println("[" + this.name + "] Assigned " + selectedDrone.getName() + " to " + event);
                 pendingEvents.remove(event);
             } else {
                 System.out.println("NO AVAILABLE DRONES FOR EVENT");
@@ -123,7 +121,7 @@ public class DroneSubsystem implements Runnable {
                 InputEvent completedEvent = workingDrone.getCompletedEvent();
                 if (completedEvent != null) {
                     workingDrone.setCompletedEvent(null);
-                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED EVENT");
+                    System.out.println("[" + this.name + "] " + workingDrone.getName().toUpperCase() + ": COMPLETED " + completedEvent);
                     sendConfirmation(completedEvent);
                     workingDrones.remove(entry.getKey());
                 }
@@ -214,7 +212,7 @@ public class DroneSubsystem implements Runnable {
                     InetAddress.getLocalHost(), 5001
             );
             socket.send(packet);
-            System.out.println("["+this.name + "] SENDING CONFIRMATION TO SCHEDULER --> " + event);
+            System.out.println("["+this.name + "] SENDING CONFIRMATION TO SCHEDULER --> " + event.getEventID());
         } catch (IOException e) {
             System.err.println("Failed to send confirmation: " + e.getMessage());
         }
@@ -234,7 +232,7 @@ public class DroneSubsystem implements Runnable {
     }
 
     public static void main(String[] args) {
-        DroneSubsystem subsystem = new DroneSubsystem("DSS", 2);
+        DroneSubsystem subsystem = new DroneSubsystem("DSS", 3);
         new Thread(subsystem).start();
     }
 }
