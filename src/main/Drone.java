@@ -18,6 +18,8 @@ public class Drone implements Runnable{
     private static int nextID = 1; // Will be used to uniquely increment the ID
     private LocalTime localTime; // Will have the local time start of the event
 
+
+    private boolean changedEvent;
     private DroneStateMachine droneState; // This will be used for the drones state
     private Coordinate currentCoordinates;
     private InputEvent assignedEvent;
@@ -35,7 +37,13 @@ public class Drone implements Runnable{
         this.currentCoordinates = new Coordinate(0,0);
         this.assignedEvent = null;
         this.completedEvent = null;
+        this.changedEvent = false;
 
+    }
+
+    // Synchronized getter for changedEvent
+    public synchronized boolean isChangedEvent() {
+        return changedEvent;
     }
 
     public Coordinate getCurrentCoordinates() {
@@ -56,6 +64,11 @@ public class Drone implements Runnable{
      */
     public String getName() {
         return name;
+    }
+
+    // Synchronized setter for changedEvent
+    public synchronized void setChangedEvent(boolean changedEvent) {
+        this.changedEvent = changedEvent;
     }
 
     /**
@@ -80,22 +93,6 @@ public class Drone implements Runnable{
      */
     public double getDECELERATION_TIME() {
         return DECELERATION_TIME;
-    }
-
-    /**
-     * Gets the top speed of the drone in meters per second
-     * @return top speed
-     */
-    public double getTOP_SPEED() {
-        return TOP_SPEED;
-    }
-
-    /**
-     * Gets the time it takes the drone to drop water
-     * @return drones water drop time.
-     */
-    public double getDROP_WATER_TIME() {
-        return DROP_WATER_TIME;
     }
 
     /**
@@ -141,7 +138,7 @@ public class Drone implements Runnable{
         completedEvent = event;
     }
 
-    public void setCurrentEvent(InputEvent event){
+    public synchronized void setCurrentEvent(InputEvent event){
         currentEvent = event;
     }
 
@@ -149,7 +146,7 @@ public class Drone implements Runnable{
         this.droneState = droneState;
     }
 
-    public InputEvent getAssignedEvent() {
+    public synchronized InputEvent getAssignedEvent() {
         return assignedEvent;
     }
 
@@ -157,9 +154,27 @@ public class Drone implements Runnable{
         return localTime;
     }
 
-    public InputEvent getCurrentEvent() {
+    public synchronized InputEvent getCurrentEvent() {
         return currentEvent;
     }
+
+
+    public void checkIfTaskSwitch() {
+        InputEvent assignedTask = getAssignedEvent();
+        if (assignedTask != null) {
+            InputEvent oldTask = getCurrentEvent();
+            setAssignedEvent(null);
+            setCurrentEvent(assignedTask);
+            System.out.println("[" + name + "] TASK SWITCHED FROM "
+                    + (oldTask != null ? oldTask.getZoneId() : "NONE")
+                    + " TO " + assignedTask.getZoneId());
+            // Reset state to handle new task (e.g., recalculate path)
+            if (droneState instanceof CruisingState) {
+                setDroneState(new AscendingState()); // Restart ascent for new task
+            }
+        }
+    }
+
 
     public void updateLocation(double seconds){
         Coordinate fireCoordinates = currentEvent.getZone().getZoneCenter();

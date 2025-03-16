@@ -78,15 +78,28 @@ public class DroneSubsystem implements Runnable {
 
     private void handleReceivedEventState() {
         List<InputEvent> eventsToProcess = new ArrayList<>(pendingEvents);
+        System.out.println("PENDING EVENTS ------ " + pendingEvents);
 
         for (InputEvent event : eventsToProcess) {
-            Drone selectedDrone = chooseDroneAlgorithm(event);
+            Drone selectedDrone = chooseDroneAlgorithm22(event);
 
+            //if done was selected
             if (selectedDrone != null) {
-                System.out.println("****** DRONE SELECT  " + selectedDrone.getName());
+
+                // if Switching the drone's task
+                InputEvent selectedDroneCurrentEvent = selectedDrone.getCurrentEvent();
+                if(selectedDroneCurrentEvent != null){
+                    // Add old task back only if not already in pendingEvents
+                    if (!pendingEvents.contains(selectedDroneCurrentEvent)) {
+                        pendingEvents.add(selectedDroneCurrentEvent);
+                    }
+                    System.out.println("SWITCHING DRONE ");
+                    selectedDrone.setChangedEvent(true);    //set to true stating that the drone will not take any new tasks until completed current task
+                }
+
                 selectedDrone.setAssignedEvent(event);
                 workingDrones.put(selectedDrone.getID(), selectedDrone);
-                System.out.println("[" + this.name + "] Assigned " + selectedDrone.getName() + " to event");
+                System.out.println("[" + this.name + "] Assigned " + selectedDrone.getName() + " to " + event);
                 pendingEvents.remove(event);
             } else {
                 System.out.println("NO AVAILABLE DRONES FOR EVENT");
@@ -120,6 +133,60 @@ public class DroneSubsystem implements Runnable {
         currentState = SubsystemState.WAITING;
     }
 
+    private Drone chooseDroneAlgorithm22(InputEvent event) {
+        Coordinate eventCoords = event.getZone().getZoneCenter();
+        Drone closestDrone = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (Drone drone : drones) {
+            // Skip drones that have already changed tasks
+            if (drone.isChangedEvent()) {
+                continue;
+            }
+
+            // Existing state check
+            if (drone.getDroneState() instanceof AvailableState || drone.getDroneState() instanceof AscendingState || drone.getDroneState() instanceof CruisingState) {
+
+                InputEvent currentEvent = drone.getCurrentEvent();
+                boolean isEligible = false;
+
+                // Existing priority logic
+                if (currentEvent == null) {
+                    isEligible = true;
+                } else {
+                    int currentPriority = currentEvent.getSeverity().getValue();
+                    int newPriority = event.getSeverity().getValue();
+
+                    if (newPriority > currentPriority) {
+                        isEligible = true;
+                    } else if (newPriority == currentPriority) {
+                        isEligible = true;
+                    }
+                }
+
+                if (isEligible) {
+                    Coordinate droneCoords = drone.getCurrentCoordinates();
+                    double distance = calculateDistance(eventCoords, droneCoords);
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestDrone = drone;
+                    }
+                }
+            }
+        }
+
+        // Mark the chosen drone as having changed tasks
+//        if (closestDrone != null) {
+//            closestDrone.setChangedEvent(true);
+//        }
+
+        //System.out.println("for event ==========="+event.toString()+ "\n CHOSEN DRONE ===========" + (closestDrone != null ? closestDrone.getName() : "None") + " | State: " + (closestDrone != null ? closestDrone.getDroneState() : "N/A"));
+        return closestDrone;
+    }
+
+//System.out.println("for event ==========="+event.toString()+ "\n CHOSEN DRONE ===========" + (closestDrone != null ? closestDrone.getName() : "None") + " | State: " + (closestDrone != null ? closestDrone.getDroneState() : "N/A"));
+
     private Drone chooseDroneAlgorithm(InputEvent event) {
         Coordinate eventCoords = event.getZone().getZoneCenter();
         Drone closestDrone = null;
@@ -127,8 +194,7 @@ public class DroneSubsystem implements Runnable {
 
         for (Drone drone : drones) {
             // Check both state and working status
-            if (drone.getDroneState() instanceof AvailableState &&
-                    !workingDrones.containsKey(drone.getID())) {
+            if (drone.getDroneState() instanceof AvailableState && !workingDrones.containsKey(drone.getID())) {
 
                 Coordinate droneCoords = drone.getCurrentCoordinates();
                 double distance = calculateDistance(eventCoords, droneCoords);
@@ -176,7 +242,7 @@ public class DroneSubsystem implements Runnable {
     }
 
     public static void main(String[] args) {
-        DroneSubsystem subsystem = new DroneSubsystem("DSS", 3);
+        DroneSubsystem subsystem = new DroneSubsystem("DSS", 2);
         new Thread(subsystem).start();
     }
 }
