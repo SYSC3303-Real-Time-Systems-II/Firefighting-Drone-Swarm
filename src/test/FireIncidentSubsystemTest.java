@@ -21,9 +21,8 @@ class FireIncidentSubsystemTest {
         EventType[] event_type = {EventType.FIRE_DETECTED, EventType.DRONE_REQUEST}; // The type of event
         Severity[] severity = {Severity.High, Severity.Moderate}; // The severity of the fire
 
-        RelayBuffer relayBuffer = new RelayBuffer(); // Creates a relay buffer object
 
-        FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv", relayBuffer); // Creates a fire incident subsystem object
+        FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv"); // Creates a fire incident subsystem object
 
         int i = 0; // Will be used for indexing
 
@@ -45,9 +44,7 @@ class FireIncidentSubsystemTest {
         Coordinate[] zoneStart = {new Coordinate(0, 0), new Coordinate(0, 600)}; // The start zone coordinates from the input file
         Coordinate[] zoneEnd = {new Coordinate(700, 600), new Coordinate(650, 1500)}; // The end zone coordinates from the input file
 
-        RelayBuffer relayBuffer = new RelayBuffer(); // Creates a relay buffer object
-
-        FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv", relayBuffer); // Creates a fire incident subsystem object
+        FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv"); // Creates a fire incident subsystem object
 
         int i = 0; // Will be used for indexing
 

@@ -41,6 +41,29 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+    /**
+     * Gets the input event for the drone subsystem which can be received from the scheduler or sent to the
+     * scheduler. FOR TESTING PURPOSES
+     */
+    public InputEvent getCurrentEvent() {
+        return currentEvent;
+    }
+
+    /**
+     * Set the input event for the drone subsystem. FOR TESTING PURPOSES.
+     */
+    public void setCurrentEvent(InputEvent currentEvent) {
+        this.currentEvent = currentEvent;
+    }
+
+    /**
+     * Gets the hashmap for the working drones. FOR TESTING PURPOSES.
+     */
+    public ConcurrentHashMap<Integer, Drone> getWorkingDrones() {
+        return workingDrones;
+    }
+
+
     @Override
     public void run() {
         System.out.println("["+this.name + "] subsystem started with " + drones.size() + " drones");
@@ -62,7 +85,7 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
-    private boolean handleWaitingState() {
+    public boolean handleWaitingState() {
         try {
             byte[] buffer = new byte[1024];
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -83,7 +106,7 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
-    private void handleReceivedEventState() {
+    public void handleReceivedEventState() {
         if(currentEvent != null) {
             Drone selectedDrone = chooseDroneAlgorithm(currentEvent);
 
@@ -96,7 +119,7 @@ public class DroneSubsystem implements Runnable {
         currentState = SubsystemState.SENDING_CONFIRMATION;
     }
 
-    private void handleSendingConfirmationState() {
+    public void handleSendingConfirmationState() {
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
@@ -141,7 +164,7 @@ public class DroneSubsystem implements Runnable {
         return closestDrone;
     }
 
-    private double calculateDistance(Coordinate a, Coordinate b) {
+    public double calculateDistance(Coordinate a, Coordinate b) {
         return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) +
                 Math.pow(a.getY() - b.getY(), 2));
     }
