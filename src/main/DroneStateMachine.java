@@ -88,10 +88,22 @@ class CruisingState extends InFieldState {
 class DropAgentState extends InFieldState {
     @Override
     public void handle(Drone context) {
-        System.out.println("["+context.getName() + "] WATER DROPPED, RETURNING TO BASE: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the watter was dropped and that it's returning to base
-        context.setLocalTime(context.getLocalTime().plusSeconds((long) context.getDECELERATION_TIME())); // Adds the local time
-        context.sleepFor(context.getDECELERATION_TIME()); // Simulates the deceleration time
-        context.setDroneState(new ReturningToBaseState()); // The drone is returning to base now
+        int waterNeeded = context.getCurrentEvent().getSeverity().getValue();
+        double currentCapacity = context.getWaterCapacity();
+        if (currentCapacity >= waterNeeded) {
+            System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
+            context.setWaterCapacity(currentCapacity - waterNeeded);
+            context.setLocalTime(context.getLocalTime().plusSeconds((long) context.getDROP_WATER_TIME()));
+            context.drainBattery(context.getDROP_WATER_TIME());
+        }
+        else {
+            System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity ("
+                    + context.getCurrentEvent().getSeverity() + ")!");
+            context.setLocalTime(context.getLocalTime().plusSeconds((long) context.getDECELERATION_TIME())); // Adds the local time
+        }
+        System.out.println("["+context.getName() + "]: RETURNING TO BASE: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the watter was dropped and that it's returning to base
+        // sleepFor(DECELERATION_TIME); // Simulates the deceleration time
+        context.setDroneState(new ReturningToBaseState());
     }
 }
 
@@ -106,6 +118,35 @@ class ReturningToBaseState extends InFieldState {
         context.setChangedEvent(false);
         context.setCurrentEvent(null);
         context.setAssignedEvent(null);
+        context.drainBattery(travelZoneTime2);
+        context.setDroneState(new RefillState());
+    }
+}
+
+class RefillState extends InFieldState {
+    @Override
+    public void handle(Drone context) {
+        System.out.println(context.getName() + ": REFILLING WATER...");
+        context.sleepFor(2); // 2 second refill delay
+        context.setLocalTime(context.getLocalTime().plusSeconds(2));
+        // Refill water capacity
+        context.refillWater();
+        System.out.println(context.getName() + ": WATER REFILLED. AVAILABLE AT TIME: " + context.getLocalTime());
+        if (context.getBatteryCapacity() < context.getMAX_BATTERY_CAPACITY() * 0.8){
+            context.setDroneState(new BatteryRechargingState());
+        }
+        else context.setDroneState(new AvailableState());
+    }
+}
+
+class BatteryRechargingState extends InFieldState {
+    @Override
+    public void handle(Drone context) {
+        System.out.println(context.getName() + ": BATTERY RECHARGING...");
+        context.sleepFor(2); // 2-second recharge delay
+        context.setLocalTime(context.getLocalTime().plusSeconds(2));
+        context.setBatteryCapacity(context.getMAX_BATTERY_CAPACITY());
         context.setDroneState(new AvailableState());
     }
 }
+

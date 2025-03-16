@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
 public class InputEvent implements Serializable {
     // Formatter for parsing and displaying time
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private String eventID;
+
     private LocalTime time;                 // Time of the event
     private int zoneId;                     // ID of the zone where the event occurred
     private Zone zone;                      // Zone object associated with the event
@@ -27,8 +27,7 @@ public class InputEvent implements Serializable {
      * @param severity  The severity of the event (e.g., High, Moderate, Low).
      * @param status    The current status of the event (e.g., UNRESOLVED, COMPLETE).
      */
-    public InputEvent(String eventID, String time, int zone_id, String event_type, String severity, Status status){
-        this.eventID = eventID;
+    public InputEvent(String time, int zone_id, String event_type, String severity, Status status){
         this.time = LocalTime.parse(time, TIME_FORMATTER);
         this.zoneId = zone_id;
         this.zone = null;
@@ -36,15 +35,6 @@ public class InputEvent implements Serializable {
         this.severity = Severity.valueOf(severity);
         this.status = status;
     }
-
-    /**
-     * Returns the EventID
-     * @return
-     */
-    public String getEventID() {
-        return eventID;
-    }
-
     /**
      * Returns the type of the event.
      *

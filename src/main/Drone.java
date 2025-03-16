@@ -13,10 +13,15 @@ public class Drone implements Runnable{
     private final double DECELERATION_TIME = 0.075; // The deceleration time of the drone
     private final double TOP_SPEED = 20.8; // Top speed of the drone in meters per second
     private final double DROP_WATER_TIME = 20.0; // The time it takes for the drone to drop the water
+    private final double MAX_WATER_CAPACITY = 30.0;
+    private final double MAX_BATTERY_CAPACITY = 100.0;
+    private static final double BATTERY_DRAIN_RATE = 0.1; // battery % drained per second
     private final String name; // This will be the name of teh drone based on its ID
 
     private static int nextID = 1; // Will be used to uniquely increment the ID
     private LocalTime localTime; // Will have the local time start of the event
+    private double waterCapacity = MAX_WATER_CAPACITY;
+    private double batteryCapacity = MAX_BATTERY_CAPACITY;
 
 
     private boolean changedEvent;
@@ -93,6 +98,52 @@ public class Drone implements Runnable{
      */
     public double getDECELERATION_TIME() {
         return DECELERATION_TIME;
+    }
+
+    /**
+     * Gets the top speed of the drone in meters per second
+     * @return top speed
+     */
+    public double getTOP_SPEED() {
+        return TOP_SPEED;
+    }
+
+    /**
+     * Gets the time it takes the drone to drop water
+     * @return drones water drop time.
+     */
+    public double getDROP_WATER_TIME() {
+        return DROP_WATER_TIME;
+    }
+
+    public double getMAX_WATER_CAPACITY() {
+        return MAX_WATER_CAPACITY;
+    }
+
+    public double getWaterCapacity() {
+        return waterCapacity;
+    }
+
+    public void setWaterCapacity(double waterCapacity) {
+        this.waterCapacity = waterCapacity;
+    }
+    public void refillWater() {
+        this.waterCapacity = MAX_WATER_CAPACITY;  // Use the constant
+    }
+
+    public double getBatteryCapacity() {
+        return batteryCapacity;
+    }
+    public void setBatteryCapacity(double batteryCapacity) {
+        this.batteryCapacity = batteryCapacity;
+    }
+    public double getMAX_BATTERY_CAPACITY(){
+        return MAX_BATTERY_CAPACITY;
+    }
+    public void drainBattery(double seconds) {
+        double drainAmount = seconds * BATTERY_DRAIN_RATE;
+        batteryCapacity = Math.max(0, batteryCapacity - drainAmount);
+        System.out.println(getName() + ": Remaining battery " + String.format("%.2f",batteryCapacity)+"%") ;
     }
 
     /**
