@@ -144,7 +144,7 @@ public class Scheduler implements Runnable {
                 this.addZones(receivedPackage.getZone(), this.systemType, this.name);
             }
             else { // If we have received an event package
-                System.out.println("["+this.name + "] RECEIVED AN EVENT <-- FROM FIS:"+ receivedPackage.getRelayPackageID() ); // Prints out a message that the event was received
+                System.out.println("["+this.name + "] RECEIVED AN EVENT <-- FROM FIS:"+ receivedPackage.getEvent().getEventID() ); // Prints out a message that the event was received
                 // Process the event and add it to the inputEvents queue
                 receivedPackage.getEvent().setZone(zones.get(receivedPackage.getEvent().getZoneId())); // Set the zone for the event
                 this.inputEvents.add(receivedPackage.getEvent()); // Adds the input events to the list of input events for the drone subsystem
@@ -166,7 +166,7 @@ public class Scheduler implements Runnable {
         try {
             byte[] message = serializeRelayPackage(relayPackage);  // Serializes the relay package by passing it to the method
             DatagramPacket sendPacket = new DatagramPacket(message, message.length,InetAddress.getLocalHost(), 4000); // The packet that will be sent to the fire incident subsystem which has a port of 4000
-            System.out.println("["+this.name + "] SENDING CONFIRMATION  --> TO FIS: "  + relayPackage.getEvent().toString() );
+            System.out.println("["+this.name + "] SENDING CONFIRMATION  --> TO FIS: "  + relayPackage.getEvent().getEventID() );
             receiveAndSendFISSocket.send(sendPacket); // Send the relay package
         }
         catch (IOException e){
