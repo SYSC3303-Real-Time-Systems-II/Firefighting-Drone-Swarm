@@ -253,7 +253,7 @@ public class FireIncidentSubsystem implements Runnable {
             sendReceiveSocket.receive(packet);
 
             RelayPackage received = deserializeRelayPackage(packet);
-            System.out.println("["+this.name + "] Received confirmation for " + received.getRelayPackageID());
+            System.out.println("["+this.name + "] Received confirmation for " + received.getEvent().getEventID());
 
             // Only switch to sending if we have more events
             currentState = inputEvents.isEmpty() ? FireIncidentSubsystemState.IDLE : FireIncidentSubsystemState.SENDING_DATA;
