@@ -54,11 +54,7 @@ finds an available drone to handle the event. The communication between the thre
    - Finds an available drone to be sent to the zone that was requested. 
    - Sends confirmation back to the Scheduler.
 
-4. **Buffers**:
-   - `RelayBuffer` is used for communication between the FireIncidentSubsystem and Scheduler.
-   - `EventBuffer` is used for communication between the Scheduler and DroneSubsystem.
-
-5. **Drone**
+4. **Drone**
    - Sent out by the drone subsystem to go a fire zone or a drone requested zone.
    - Transitions through its states such to travel, take out a fire, and return to the station.
    - Alerts the drone subsystem when it has arrived to a zone which tells the scheduler.
