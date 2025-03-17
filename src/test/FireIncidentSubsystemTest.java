@@ -1,4 +1,10 @@
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Field;
+import java.net.DatagramSocket;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -9,6 +15,12 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 
 class FireIncidentSubsystemTest {
+    private FireIncidentSubsystem fireIncidentSubsystem;
+
+    @BeforeEach
+    void setUp() {
+        fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv");
+    }
 
     /**
      * Tests to makes sure that the event input file which traced all the input events was successful.
@@ -21,6 +33,7 @@ class FireIncidentSubsystemTest {
         EventType[] event_type = {EventType.FIRE_DETECTED, EventType.DRONE_REQUEST}; // The type of event
         Severity[] severity = {Severity.High, Severity.Moderate}; // The severity of the fire
 
+        RelayBuffer relayBuffer = new RelayBuffer(); // Creates a relay buffer object
 
         FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv"); // Creates a fire incident subsystem object
 
@@ -43,6 +56,8 @@ class FireIncidentSubsystemTest {
         int[] zoneId = {1, 2}; // The zone ids in the input file
         Coordinate[] zoneStart = {new Coordinate(0, 0), new Coordinate(0, 600)}; // The start zone coordinates from the input file
         Coordinate[] zoneEnd = {new Coordinate(700, 600), new Coordinate(650, 1500)}; // The end zone coordinates from the input file
+
+        RelayBuffer relayBuffer = new RelayBuffer(); // Creates a relay buffer object
 
         FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv"); // Creates a fire incident subsystem object
 

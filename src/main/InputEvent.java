@@ -10,38 +10,52 @@ import java.time.format.DateTimeFormatter;
 public class InputEvent implements Serializable {
     // Formatter for parsing and displaying time
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static int InputEventID = 1;
 
     private LocalTime time;                 // Time of the event
     private int zoneId;                     // ID of the zone where the event occurred
     private Zone zone;                      // Zone object associated with the event
-    private EventType event_type;           // Type of the event (e.g., DRONE_REQUEST, FIRE_DETECTED)
+    private EventType eventType;           // Type of the event (e.g., DRONE_REQUEST, FIRE_DETECTED)
     private Severity severity;              // Severity of the event (e.g., High, Moderate, Low)
     private Status status;                  // Current status of the event (e.g., UNRESOLVED, COMPLETE)
+    private int eventID;
 
     /**
      * Constructs an InputEvent object.
      *
      * @param time      The time of the event in "HH:mm:ss" format.
-     * @param zone_id   The ID of the zone where the event occurred.
-     * @param event_type The type of the event (e.g., FIRE, SMOKE).
+     * @param zoneId   The ID of the zone where the event occurred.
+     * @param eventType The type of the event (e.g., FIRE, SMOKE).
      * @param severity  The severity of the event (e.g., High, Moderate, Low).
      * @param status    The current status of the event (e.g., UNRESOLVED, COMPLETE).
      */
-    public InputEvent(String time, int zone_id, String event_type, String severity, Status status){
+    public InputEvent(String time, int zoneId, String eventType, String severity, Status status){
         this.time = LocalTime.parse(time, TIME_FORMATTER);
-        this.zoneId = zone_id;
+        this.zoneId = zoneId;
         this.zone = null;
-        this.event_type = EventType.valueOf(event_type);
+        this.eventType = EventType.valueOf(eventType);
         this.severity = Severity.valueOf(severity);
         this.status = status;
+        this.eventID = InputEventID;
+        InputEventID ++;
     }
+
+    /**
+     * Returns the id of the event.
+     *
+     * @return The event id.
+     */
+    public int getEventID() {
+        return eventID;
+    }
+
     /**
      * Returns the type of the event.
      *
      * @return The event type.
      */
     public EventType getEventType() {
-        return event_type;
+        return eventType;
     }
 
     /**
@@ -90,15 +104,6 @@ public class InputEvent implements Serializable {
     }
 
     /**
-     * Returns the type of the event.
-     *
-     * @return The event type.
-     */
-    public EventType getEvent_type() {
-        return event_type;
-    }
-
-    /**
      * Returns the current status of the event.
      *
      * @return The event status.
@@ -128,10 +133,10 @@ public class InputEvent implements Serializable {
     /**
      * Sets the type of the event.
      *
-     * @param event_type The new event type.
+     * @param eventType The new event type.
      */
-    public void setEvent_type(EventType event_type) {
-        this.event_type = event_type;
+    public void setEventType(EventType eventType) {
+        this.eventType = eventType;
     }
 
     /**
@@ -159,6 +164,6 @@ public class InputEvent implements Serializable {
      */
     @Override
     public String toString() {
-        return "Time: " + time + " Zone: " + zoneId + " Event Type: " + event_type + " Severity: " + severity;
+        return "Time: " + time + " Zone: " + zoneId + " Event Type: " + eventType + " Severity: " + severity;
     }
 }

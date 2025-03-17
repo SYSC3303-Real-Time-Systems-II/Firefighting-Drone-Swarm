@@ -8,7 +8,6 @@ public class DroneSubsystem implements Runnable {
     private enum SubsystemState { WAITING, RECEIVED_EVENT, SENDING_CONFIRMATION }
 
     private final String name;
-    private final Systems systemType;
     private final DatagramSocket socket;
     private SubsystemState currentState = SubsystemState.WAITING;
 
@@ -22,7 +21,6 @@ public class DroneSubsystem implements Runnable {
 
     public DroneSubsystem(String name, int numDrones) {
         this.name = name;
-        this.systemType = Systems.DroneSubsystem;
 
 
         // Initialize drone fleet

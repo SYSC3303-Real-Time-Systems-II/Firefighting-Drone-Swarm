@@ -89,8 +89,8 @@ class InputEventTest {
      */
     @Test
     void setEvent_type() {
-        event.setEvent_type(EventType.DRONE_REQUEST);
-        assertEquals(EventType.DRONE_REQUEST, event.getEvent_type());
+        event.setEventType(EventType.DRONE_REQUEST);
+        assertEquals(EventType.DRONE_REQUEST, event.getEventType());
     }
 
     /**

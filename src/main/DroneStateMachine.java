@@ -1,57 +1,81 @@
+/**
+ * Interface representing the state of a drone in the state machine.
+ */
 interface DroneStateMachine {
+    /**
+     * Handles the state transition and logic for the drone.
+     *
+     * @param context The current drone instance.
+     */
     void handle(Drone context);
 }
 
+/**
+ * Abstract class representing a state where the drone is in the base.
+ */
 abstract class InBaseState implements DroneStateMachine {
     @Override
     public abstract void handle(Drone context);
 }
 
+/**
+ * Abstract class representing a state where the drone is in the field.
+ */
 abstract class InFieldState implements DroneStateMachine {
     @Override
     public abstract void handle(Drone context);
 }
 
+/**
+ * State where the drone is available and waiting for an event assignment.
+ */
 class AvailableState extends InBaseState {
+    /**
+     * Handles the available state by waiting for an assigned event.
+     *
+     * @param context The current drone instance.
+     */
     @Override
     public void handle(Drone context) {
-        //lock and wait until a task is assigned
-        synchronized (context) {
-
-            while (context.getAssignedEvent() == null) {
-                try {
-                    System.out.println("["+context.getName() + "] WAITING FOR EVENT");
-                    context.wait();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            context.setCurrentEvent(context.getAssignedEvent()); //move the assingedEvent to Current Event
-            context.setAssignedEvent(null);
-
-        }
+        // Lock and wait until a task is assigned
+        context.waitForTask();
         context.setLocalTime(context.getCurrentEvent().getTime());
         System.out.println("["+context.getName() + "] GOT EVENT: " + context.getCurrentEvent().getEventID() + " AT TIME: " + context.getLocalTime());
-        context.setLocalTime(context.getLocalTime().plusSeconds((long) context.getACCELERATION_TIME()));  // Adds the local time
-        context.sleepFor(context.getACCELERATION_TIME()); // Simulates the acceleration time
+        context.setLocalTime(context.getLocalTime().plusNanos((long) (context.ACCELERATION_TIME * 1000000000)));  // Adds the local time
+        context.sleepFor(context.ACCELERATION_TIME); // Simulates the acceleration time
         context.setDroneState(new AscendingState()); // The drone becomes on route to the fire zone
     }
 }
 
+/**
+ * State where the drone is ascending after an event assignment.
+ */
 class AscendingState extends InBaseState {
+    /**
+     * Handles the ascending state by simulating the travel to the target zone.
+     *
+     * @param context The current drone instance.
+     */
     @Override
     public void handle(Drone context) {
         context.checkIfTaskSwitch();    //check for change in task
         double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
         context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime)); // Adds the local time
-        context.sleepFor(context.getACCELERATION_TIME());
+        context.sleepFor(context.ACCELERATION_TIME);
         System.out.println("["+context.getName() + "] ASCENDING AT TIME: " + context.getLocalTime());
         context.setDroneState(new CruisingState());
     }
 }
 
+/**
+ * State where the drone is cruising toward the event zone.
+ */
 class CruisingState extends InFieldState {
-
+    /**
+     * Handles the cruising state by adjusting the drone's position over time.
+     *
+     * @param context The current drone instance.
+     */
     @Override
     public void handle(Drone context) {
         double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
@@ -85,21 +109,29 @@ class CruisingState extends InFieldState {
 }
 
 
+/**
+ * State where the drone drops water to handle the event.
+ */
 class DropAgentState extends InFieldState {
+    /**
+     * Handles the drop agent state by dropping water at the event zone.
+     *
+     * @param context The current drone instance.
+     */
     @Override
     public void handle(Drone context) {
         int waterNeeded = context.getCurrentEvent().getSeverity().getValue();
-        double currentCapacity = context.getWaterCapacity();
+        double currentCapacity = context.getWaterLevel();
         if (currentCapacity >= waterNeeded) {
             System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
-            context.setWaterCapacity(currentCapacity - waterNeeded);
-            context.setLocalTime(context.getLocalTime().plusSeconds((long) context.getDROP_WATER_TIME()));
-            context.drainBattery(context.getDROP_WATER_TIME());
+            context.setWaterLevel(currentCapacity - waterNeeded);
+            context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
+            context.drainBattery(context.DROP_WATER_TIME);
         }
         else {
             System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity ("
                     + context.getCurrentEvent().getSeverity() + ")!");
-            context.setLocalTime(context.getLocalTime().plusSeconds((long) context.getDECELERATION_TIME())); // Adds the local time
+            context.setLocalTime(context.getLocalTime().plusNanos((long) (context.DECELERATION_TIME * 1000000000))); // Adds the local time
         }
         System.out.println("["+context.getName() + "]: RETURNING TO BASE: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the watter was dropped and that it's returning to base
         // sleepFor(DECELERATION_TIME); // Simulates the deceleration time
@@ -107,7 +139,15 @@ class DropAgentState extends InFieldState {
     }
 }
 
+/**
+ * State where the drone returns to the base after handling an event.
+ */
 class ReturningToBaseState extends InFieldState {
+    /**
+     * Handles the returning to base state by simulating the travel back.
+     *
+     * @param context The current drone instance.
+     */
     @Override
     public void handle(Drone context){
         double travelZoneTime2 = context.calculateZoneTravelTime(context.getCurrentEvent());
@@ -123,7 +163,15 @@ class ReturningToBaseState extends InFieldState {
     }
 }
 
+/**
+ * State where the drone refills water at the base.
+ */
 class RefillState extends InFieldState {
+    /**
+     * Handles the refill state by refilling the drone's water tank.
+     *
+     * @param context The current drone instance.
+     */
     @Override
     public void handle(Drone context) {
         System.out.println(context.getName() + ": REFILLING WATER...");
@@ -132,20 +180,28 @@ class RefillState extends InFieldState {
         // Refill water capacity
         context.refillWater();
         System.out.println(context.getName() + ": WATER REFILLED. AVAILABLE AT TIME: " + context.getLocalTime());
-        if (context.getBatteryCapacity() < context.getMAX_BATTERY_CAPACITY() * 0.8){
+        if (context.getBatteryLevel() < context.MAX_BATTERY_CAPACITY * 0.8){
             context.setDroneState(new BatteryRechargingState());
         }
         else context.setDroneState(new AvailableState());
     }
 }
 
+/**
+ * State where the drone is recharging its battery.
+ */
 class BatteryRechargingState extends InFieldState {
+    /**
+     * Handles the battery recharging state by simulating the recharging process.
+     *
+     * @param context The current drone instance.
+     */
     @Override
     public void handle(Drone context) {
         System.out.println(context.getName() + ": BATTERY RECHARGING...");
         context.sleepFor(2); // 2-second recharge delay
         context.setLocalTime(context.getLocalTime().plusSeconds(2));
-        context.setBatteryCapacity(context.getMAX_BATTERY_CAPACITY());
+        context.chargeBattery();
         context.setDroneState(new AvailableState());
     }
 }
