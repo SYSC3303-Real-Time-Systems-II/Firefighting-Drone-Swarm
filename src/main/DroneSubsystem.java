@@ -67,7 +67,6 @@ public class DroneSubsystem implements Runnable {
     @Override
     public void run() {
         System.out.println("["+this.name + "] subsystem started with " + drones.size() + " drones");
-
         while(true) {
             switch(currentState) {
                 case WAITING:
@@ -85,7 +84,7 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
-    public boolean handleWaitingState() {
+    public void handleWaitingState() {
         try {
             byte[] buffer = new byte[1024];
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -96,13 +95,13 @@ public class DroneSubsystem implements Runnable {
             System.out.println("["+this.name + "] received event: " + event);
             currentEvent = event;
             currentState = SubsystemState.RECEIVED_EVENT;
-            return true;
+
         }catch (SocketTimeoutException e) {
             currentState = SubsystemState.SENDING_CONFIRMATION;
-            return false;
+
         }catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
-            return false;
+
         }
     }
 
