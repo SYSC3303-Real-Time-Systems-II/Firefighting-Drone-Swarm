@@ -5,11 +5,10 @@ import java.util.concurrent.*;
 
 public class DroneSubsystem implements Runnable {
 
-    private enum SubsystemState { WAITING, RECEIVED_EVENT, SENDING_CONFIRMATION }
 
     private final String name;
     private final DatagramSocket socket;
-    private SubsystemState currentState = SubsystemState.WAITING;
+    private DroneSubsystemState currentState = DroneSubsystemState.WAITING;
 
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
@@ -21,8 +20,6 @@ public class DroneSubsystem implements Runnable {
 
     public DroneSubsystem(String name, int numDrones) {
         this.name = name;
-
-
         // Initialize drone fleet
         for(int i = 0; i < numDrones; i++) {
             Drone drone = new Drone();
@@ -30,7 +27,6 @@ public class DroneSubsystem implements Runnable {
             availableDrones.add(drone);
             new Thread(drone).start();
         }
-
         try {
             this.socket = new DatagramSocket(6000);
             this.socket.setSoTimeout(2000);
@@ -72,11 +68,11 @@ public class DroneSubsystem implements Runnable {
                     handleWaitingState();
                     break;
 
-                case RECEIVED_EVENT:
+                case RECEIVED_EVENT_FROM_SCHEDULER:
                     handleReceivedEventState();
                     break;
 
-                case SENDING_CONFIRMATION:
+                case SENDING_EVENT_TO_SCHEDULER:
                     handleSendingConfirmationState();
                     break;
             }
@@ -93,10 +89,10 @@ public class DroneSubsystem implements Runnable {
             InputEvent event = deserializeEvent(packet.getData());
             System.out.println("["+this.name + "] received event: " + event);
             currentEvent = event;
-            currentState = SubsystemState.RECEIVED_EVENT;
+            currentState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER;
             return true;
         }catch (SocketTimeoutException e) {
-            currentState = SubsystemState.SENDING_CONFIRMATION;
+            currentState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER;
             return false;
         }catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -114,7 +110,7 @@ public class DroneSubsystem implements Runnable {
                 System.out.println("["+this.name + "] Assigned " + selectedDrone.getName() + " to event");
             }
         }
-        currentState = SubsystemState.SENDING_CONFIRMATION;
+        currentState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER;
     }
 
     public void handleSendingConfirmationState() {
@@ -140,7 +136,7 @@ public class DroneSubsystem implements Runnable {
                 }
             }
         }
-        currentState = SubsystemState.WAITING;
+        currentState = DroneSubsystemState.WAITING;
     }
 
     private Drone chooseDroneAlgorithm(InputEvent event) {
