@@ -29,7 +29,7 @@ public class Drone implements Runnable{
     private Coordinate currentCoordinates;
     private InputEvent assignedEvent;
     private InputEvent currentEvent;
-    private InputEvent completedEvent;
+    private InputEvent handledEvent; // Completed or failed events
 
     /**
      * The constructor of the done system assigns a new ID and the state as available to start.
@@ -41,9 +41,8 @@ public class Drone implements Runnable{
         this.droneState = new AvailableState();
         this.currentCoordinates = new Coordinate(0,0);
         this.assignedEvent = null;
-        this.completedEvent = null;
+        this.handledEvent = null;
         this.changedEvent = false;
-
     }
 
     /**
@@ -54,13 +53,6 @@ public class Drone implements Runnable{
         return currentCoordinates;
     }
 
-    /**
-     * Gets the state of the drone.
-     * @return the state of drone.
-     */
-    public DroneStateMachine getDroneState() {
-        return droneState;
-    }
 
     /**
      * Gets the name of the drone.
@@ -125,18 +117,18 @@ public class Drone implements Runnable{
      * Gets the completed event of the drone.
      * @return the completed event of the drone.
      */
-    public InputEvent getCompletedEvent() {
+    public InputEvent getHandledEvent() {
         synchronized (this) {
-            return completedEvent;
+            return handledEvent;
         }
     }
 
     /**
      * Sets the completed of the drone.
-     * @param completedEvent the completed event of the drone.
+     * @param handledEvent the completed event of the drone.
      */
-    public void setCompletedEvent(InputEvent completedEvent){
-        this.completedEvent = completedEvent;
+    public void setHandledEvent(InputEvent handledEvent){
+        this.handledEvent = handledEvent;
     }
 
     /**
@@ -154,6 +146,15 @@ public class Drone implements Runnable{
     public void setDroneState(DroneStateMachine droneState) {
         this.droneState = droneState;
     }
+
+    /**
+     * Gets the drone state of the drone.
+     * @return the drone state.
+     */
+    public DroneStateMachine getDroneState() {
+        return droneState;
+    }
+
 
     /**
      * Gets the current assigned event of the drone.
@@ -271,17 +272,21 @@ public class Drone implements Runnable{
      */
     public void waitForTask(){
         synchronized (this) {
-
             while (this.assignedEvent == null) {
                 try {
-                    System.out.println("["+ this.name + "] WAITING FOR EVENT");
-                    wait();
+                    if (this.getDroneState() instanceof StuckState || this.getDroneState() instanceof JammedState) { // If the drone was stuck or the nozzle is broken makes the drone unavailable
+                        System.out.println("[" + this.name + "] NOW OFFLINE."); // Makes the drone offline
+                    }
+                    else {
+                        System.out.println("[" + this.name + "] WAITING FOR EVENT."); // Else prints that the drone is waiting for an event
+                    }
+                    wait(); // Waits
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             }
-            setCurrentEvent(this.assignedEvent); //move the assignedEvent to Current Event
-            setAssignedEvent(null);
+            setCurrentEvent(this.assignedEvent); // Move the assignedEvent to Current Event
+            setAssignedEvent(null); // Makes the assigned event null now
         }
     }
 
