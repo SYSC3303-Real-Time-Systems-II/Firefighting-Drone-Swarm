@@ -179,7 +179,7 @@ public class Scheduler implements Runnable {
     private void sendUDPMessageFIS(RelayPackage relayPackage){
         try {
             byte[] message = serializeRelayPackage(relayPackage);  // Serializes the relay package by passing it to the method
-            DatagramPacket sendPacket = new DatagramPacket(message, message.length,InetAddress.getLocalHost(), 4000); // The packet that will be sent to the fire incident subsystem which has a port of 4000
+            DatagramPacket sendPacket = new DatagramPacket(message, message.length,InetAddress.getLocalHost(), 7000); // The packet that will be sent to the fire incident subsystem which has a port of 4000
             System.out.println("["+this.name + "] SENDING CONFIRMATION FOR --> " + relayPackage.getEvent().toString() + " TO: " + relayPackage.getReceiverSystem());
             receiveAndSendFISSocket.send(sendPacket); // Send the relay package
         }
@@ -215,10 +215,19 @@ public class Scheduler implements Runnable {
 
             // Deserialize the byte array into a InputEvent object
             InputEvent receivedInput = deserializeInputEvent(receivePacket);
-            System.out.println("["+this.name + "] RECEIVED EVENT <-- " + receivedInput + " FROM: DroneSubsystem");
+
+            RelayPackage sendingPackage = new RelayPackage("", Systems.FireIncidentSubsystem, receivedInput, null);
+
+            if(receivedInput.getFaultType() != null){
+                System.out.println("["+this.name + "] RECEIVED FAULT EVENT <-- " + receivedInput + " FROM: DroneSubsystem");
+                sendingPackage.setRelayPackageID("FAULT_CONFIRMATION");
+            }
+            else {
+                System.out.println("["+this.name + "] RECEIVED EVENT <-- " + receivedInput + " FROM: DroneSubsystem");
+                sendingPackage.setRelayPackageID("DRONE_CONFIRMATION");
+            }
 
             // Create a confirmation package and place in confirmationPackages queue
-            RelayPackage sendingPackage = new RelayPackage("DRONE_CONFIRMATION", Systems.FireIncidentSubsystem, receivedInput, null);
             confirmationPackages.add(sendingPackage);
             return true;
 

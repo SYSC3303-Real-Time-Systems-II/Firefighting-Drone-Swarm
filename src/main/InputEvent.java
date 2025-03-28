@@ -18,7 +18,8 @@ public class InputEvent implements Serializable {
     private EventType eventType;           // Type of the event (e.g., DRONE_REQUEST, FIRE_DETECTED)
     private Severity severity;              // Severity of the event (e.g., High, Moderate, Low)
     private Status status;                  // Current status of the event (e.g., UNRESOLVED, COMPLETE)
-    private int eventID;
+    private int eventID;                    // The ID of the event
+    private FaultType faultType;            // The fault time that is associated with the input event
 
     /**
      * Constructs an InputEvent object.
@@ -28,8 +29,9 @@ public class InputEvent implements Serializable {
      * @param eventType The type of the event (e.g., FIRE, SMOKE).
      * @param severity  The severity of the event (e.g., High, Moderate, Low).
      * @param status    The current status of the event (e.g., UNRESOLVED, COMPLETE).
+     * @param faultType The fault type that is associated with the event
      */
-    public InputEvent(String time, int zoneId, String eventType, String severity, Status status){
+    public InputEvent(String time, int zoneId, String eventType, String severity, Status status, FaultType faultType) {
         this.time = LocalTime.parse(time, TIME_FORMATTER);
         this.zoneId = zoneId;
         this.zone = null;
@@ -37,6 +39,7 @@ public class InputEvent implements Serializable {
         this.severity = Severity.valueOf(severity);
         this.status = status;
         this.eventID = InputEventID;
+        this.faultType = faultType;
         InputEventID ++;
     }
 
@@ -155,6 +158,21 @@ public class InputEvent implements Serializable {
      */
     public void setSeverity(Severity severity) {
         this.severity = severity;
+    }
+
+    /**
+     * Gets the fault type of the event.
+     * @return the fault type of the event.
+     */
+    public FaultType getFaultType() {
+        return faultType;
+    }
+
+    /**
+     * Sets the fault type of the event.
+     */
+    public void setFaultType(FaultType faultType) {
+        this.faultType = faultType;
     }
 
     /**
