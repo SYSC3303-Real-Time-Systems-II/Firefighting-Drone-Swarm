@@ -179,6 +179,9 @@ public class Drone implements Runnable{
         return currentEvent;
     }
 
+    public void setCurrentCoordinates(Coordinate coord) {
+        this.currentCoordinates = coord;
+    }
     /**
      * A method use to simulate battery drain in the span of seconds given for the drone.
      * @param seconds the time in seconds.
@@ -186,7 +189,7 @@ public class Drone implements Runnable{
     public void drainBattery(double seconds) {
         double drainAmount = seconds * BATTERY_DRAIN_RATE;
         batteryLevel = Math.max(0, batteryLevel - drainAmount);
-        System.out.println(getName() + ": Remaining battery " + String.format("%.2f", batteryLevel)+"%") ;
+        //System.out.println(getName() + ": Remaining battery " + String.format("%.2f", batteryLevel)+"%") ;
     }
 
     /**
@@ -210,6 +213,10 @@ public class Drone implements Runnable{
     public double calculateZoneTravelTime(InputEvent event){
         Coordinate fireCoordinates = event.getZone().getZoneCenter();
         return Math.sqrt(Math.pow(fireCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(fireCoordinates.getY() - currentCoordinates.getY(), 2)) / TOP_SPEED;
+    }
+
+    public double calculateHomeZoneTime(Coordinate coordinate){
+        return (Math.sqrt(Math.pow(currentCoordinates.getX() - coordinate.getX(), 2) + Math.pow(currentCoordinates.getY() - coordinate.getY(), 2)) / TOP_SPEED) * 2;
     }
 
     /**
@@ -252,18 +259,24 @@ public class Drone implements Runnable{
      * @param seconds the time in seconds.
      */
     public void updateLocation(double seconds){
-        Coordinate fireCoordinates = currentEvent.getZone().getZoneCenter();
 
-        double distanceToTravel = Math.sqrt(Math.pow(fireCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(fireCoordinates.getY() - currentCoordinates.getY(), 2));
+        Coordinate locationCoordinates;
+        if (currentEvent != null){
+            locationCoordinates = currentEvent.getZone().getZoneCenter();
+        } else {
+            locationCoordinates = new Coordinate(0,0);  //going back to base
+        }
 
-        double directionX = ((fireCoordinates.getX() - currentCoordinates.getX()) / distanceToTravel);
-        double directionY = ((fireCoordinates.getY() - currentCoordinates.getY()) / distanceToTravel);
+        double distanceToTravel = Math.sqrt(Math.pow(locationCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(locationCoordinates.getY() - currentCoordinates.getY(), 2));
+        double directionX = ((locationCoordinates.getX() - currentCoordinates.getX()) / distanceToTravel);
+        double directionY = ((locationCoordinates.getY() - currentCoordinates.getY()) / distanceToTravel);
 
         double updatedX = currentCoordinates.getX() + directionX * TOP_SPEED * seconds;
         double updatedY = currentCoordinates.getY() + directionY * TOP_SPEED * seconds;
 
         currentCoordinates = new Coordinate(updatedX, updatedY);
     }
+
 
 
     /**

@@ -129,13 +129,44 @@ class DropAgentState extends InFieldState {
             context.drainBattery(context.DROP_WATER_TIME);
         }
         else {
-            System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity ("
-                    + context.getCurrentEvent().getSeverity() + ")!");
+            System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity (" + context.getCurrentEvent().getSeverity() + ")!");
             context.setLocalTime(context.getLocalTime().plusNanos((long) (context.DECELERATION_TIME * 1000000000))); // Adds the local time
         }
         System.out.println("["+context.getName() + "]: RETURNING TO BASE: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the watter was dropped and that it's returning to base
-        // sleepFor(DECELERATION_TIME); // Simulates the deceleration time
-        context.setDroneState(new ReturningToBaseState());
+
+        context.setCompletedEvent(context.getCurrentEvent());
+        context.setCurrentEvent(null);
+        context.setDroneState(new CruisingBackToBaseState());
+    }
+}
+
+class CruisingBackToBaseState extends InFieldState {
+    @Override
+    public void handle(Drone context) {
+        Coordinate homeCoord = new Coordinate(0, 0);
+        double travelZoneTime = context.calculateHomeZoneTime(homeCoord);
+        int currentTime = 0;
+
+        while (currentTime < travelZoneTime) {
+            context.checkIfTaskSwitch(); // Check for task switch during return
+
+            // Recalculate travel time in case of interruption
+            travelZoneTime = context.calculateHomeZoneTime(homeCoord);
+            if (currentTime >= travelZoneTime) break;
+
+            double timeIncrement = (travelZoneTime - currentTime < 1) ? travelZoneTime - currentTime : 1;
+
+            context.updateLocation(timeIncrement);
+            context.sleepFor(timeIncrement);
+            context.drainBattery(timeIncrement); // Drain battery for the time spent moving
+
+            currentTime += timeIncrement;
+        }
+
+        // Ensure the drone is exactly at home (0,0) after the loop
+        context.setCurrentCoordinates(new Coordinate(0,0));
+        System.out.println("[" + context.getName() + "] ARRIVED HOME AT COORDINATES: " + context.getCurrentCoordinates());
+        context.setDroneState(new RefillState());
     }
 }
 
@@ -151,8 +182,6 @@ class ReturningToBaseState extends InFieldState {
     @Override
     public void handle(Drone context){
         double travelZoneTime2 = context.calculateZoneTravelTime(context.getCurrentEvent());
-        context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime2 - 4));
-        context.sleepFor(travelZoneTime2); // Simulates the travel zone time
         System.out.println("["+context.getName() + "] ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the drone has arrived back and is now ready for the next event
         context.setCompletedEvent(context.getCurrentEvent());
         context.setChangedEvent(false);
@@ -174,12 +203,12 @@ class RefillState extends InFieldState {
      */
     @Override
     public void handle(Drone context) {
-        System.out.println(context.getName() + ": REFILLING WATER...");
+        System.out.println("["+context.getName() + "] REFILLING WATER...");
         context.sleepFor(2); // 2 second refill delay
         context.setLocalTime(context.getLocalTime().plusSeconds(2));
         // Refill water capacity
         context.refillWater();
-        System.out.println(context.getName() + ": WATER REFILLED. AVAILABLE AT TIME: " + context.getLocalTime());
+        System.out.println("["+context.getName() + "] WATER REFILLED. AVAILABLE AT TIME: " + context.getLocalTime());
         if (context.getBatteryLevel() < context.MAX_BATTERY_CAPACITY * 0.8){
             context.setDroneState(new BatteryRechargingState());
         }
