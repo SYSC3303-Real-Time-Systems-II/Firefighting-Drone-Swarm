@@ -1,3 +1,7 @@
 Time,Zone ID,Event type,Severity,Fault type
-14:00:15,1,FIRE_DETECTED,High,Stuck
-14:10:01,2,DRONE_REQUEST,Moderate,null
+13:55:05,1,DRONE_REQUEST,Low,Corrupt
+13:58:54,1,DRONE_REQUEST,Moderate,null
+14:00:15,2,FIRE_DETECTED,High,Jammed
+14:06:42,2,FIRE_DETECTED,Low,null
+14:12:17,2,DRONE_REQUEST,Moderate,Stuck
+14:22:57,1,DRONE_REQUEST,High,null
