@@ -28,10 +28,11 @@ class FireIncidentSubsystemTest {
     @Test
     void readInputEvents() {
 
-        String[] time  = {"14:00:15", "14:10:01"}; // The time inputs from the file
-        int[] zone = {1, 2}; // The zone inputs from the file
-        EventType[] event_type = {EventType.FIRE_DETECTED, EventType.DRONE_REQUEST}; // The type of event
-        Severity[] severity = {Severity.High, Severity.Moderate}; // The severity of the fire
+        String[] time  = {"13:55:05", "13:58:54", "14:00:15", "14:06:42", "14:12:17", "14:22:57"}; // The time inputs from the file
+        int[] zone = {1, 1, 2, 2, 2, 1}; // The zone inputs from the file
+        EventType[] event_type = {EventType.DRONE_REQUEST, EventType.DRONE_REQUEST, EventType.FIRE_DETECTED, EventType.FIRE_DETECTED, EventType.DRONE_REQUEST, EventType.DRONE_REQUEST}; // The type of event
+        Severity[] severity = {Severity.Low, Severity.Moderate, Severity.High, Severity.Low, Severity.Moderate, Severity.High}; // The severity of the fire
+        FaultType[] faultTypes = {FaultType.CORRUPT, null, FaultType.JAMMED, null, FaultType.STUCK, null};
 
         FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv"); // Creates a fire incident subsystem object
 
@@ -42,6 +43,7 @@ class FireIncidentSubsystemTest {
             assertEquals(zone[i], q.getZoneId()); // Checks for the zone to be the same
             assertEquals(event_type[i], q.getEventType()); // Checks for the event to be the same
             assertEquals(severity[i], q.getSeverity()); // Checks for the severity to be the same
+            assertEquals(faultTypes[i], q.getFaultType());
             i++; // Increments to the next
         }
     }
