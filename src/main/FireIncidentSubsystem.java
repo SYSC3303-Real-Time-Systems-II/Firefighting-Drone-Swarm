@@ -18,7 +18,6 @@ public class FireIncidentSubsystem implements Runnable {
     private DatagramSocket sendReceiveSocket;
     private FireIncidentSubsystemState currentState = FireIncidentSubsystemState.SENDING_DATA;
     private boolean zonesSent = false;
-    private int eventCounter = 1;
     private long lastSendTime = 0;
 
     /**
@@ -174,7 +173,7 @@ public class FireIncidentSubsystem implements Runnable {
      */
     @Override
     public void run() {
-        System.out.println("["+this.name + "] subsystem started...");
+        System.out.println("["+this.name + "] FIREINCIDENTSUBSYSTEM STARTED...");
 
         // Initial zone package
         sendZonePackage();
@@ -213,7 +212,7 @@ public class FireIncidentSubsystem implements Runnable {
         } else if (!inputEvents.isEmpty()) {
             InputEvent event = inputEvents.remove();
             RelayPackage pkg = new RelayPackage(
-                    "INPUT_EVENT_" + eventCounter++,
+                    "INPUT_EVENT_" + event.getEventID(),
                     Systems.Scheduler,
                     event,
                     null
@@ -235,12 +234,12 @@ public class FireIncidentSubsystem implements Runnable {
             RelayPackage received = deserializeRelayPackage(packet);
 
             if (received.getEvent().getFaultType() != null){
-                System.out.println("["+this.name + "] FAULT WITH ID: " + received.getRelayPackageID() + " WILL RESEND TO: " + Systems.Scheduler);
+                System.out.println("["+this.name + "] RECEIVED FAULT CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID() + " WILL RESEND FOR RESCHEDULING TO: " + Systems.Scheduler);
                 received.getEvent().setFaultType(null); // Sets the fault type to null and attempts to resend it
                 inputEvents.add(received.getEvent()); // Adds the input event again to be sent out after resolving the error
             }
             else {
-                System.out.println("["+this.name + "] RECEIVED CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID());
+                System.out.println("["+this.name + "] RECEIVED COMPLETED CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID());
             }
 
             // Only switch to sending if we have more events
@@ -264,7 +263,17 @@ public class FireIncidentSubsystem implements Runnable {
             sendReceiveSocket.receive(packet);
 
             RelayPackage received = deserializeRelayPackage(packet);
-            System.out.println("["+this.name + "] RECEIVED CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID());
+
+            if (received.getEvent().getFaultType() == null){
+                System.out.println("["+this.name + "] RECEIVED COMPLETED CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID());
+            }
+            else {
+                System.out.println("["+this.name + "] RECEIVED FAULT CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID() + " WILL RESEND FOR RESCHEDULING TO: " + Systems.Scheduler);
+                received.getEvent().setFaultType(null); // Sets the fault type to null and attempts to resend it
+                inputEvents.add(received.getEvent()); // Adds the input event again to be sent out after resolving the error
+            }
+
+            currentState = inputEvents.isEmpty() ? FireIncidentSubsystemState.IDLE : FireIncidentSubsystemState.SENDING_DATA;
 
         } catch (SocketTimeoutException e) {
             // Expected in idle state
@@ -286,7 +295,7 @@ public class FireIncidentSubsystem implements Runnable {
             try {
                 // Scale real-world time (1 minute = 100ms)
                 ///ISSUE HERE WITH THE TIME TODO
-                Thread.sleep(100);
+                Thread.sleep(1000);
                 current_time = event.getTime();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

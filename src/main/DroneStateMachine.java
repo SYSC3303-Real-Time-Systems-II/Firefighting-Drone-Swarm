@@ -40,7 +40,7 @@ class AvailableState extends InBaseState {
         // Lock and wait until a task is assigned
         context.waitForTask();
         context.setLocalTime(context.getCurrentEvent().getTime());
-        System.out.println("["+context.getName() + "] GOT EVENT: " + context.getCurrentEvent().getEventID() + " AT TIME: " + context.getLocalTime());
+        System.out.println("["+context.getName() + "] GOT INPUT_EVENT_" + context.getCurrentEvent().getEventID() + " (" + context.getCurrentEvent().toString() + ")" + " AT TIME: " + context.getLocalTime());
         context.setLocalTime(context.getLocalTime().plusNanos((long) (context.ACCELERATION_TIME * 1000000000)));  // Adds the local time
         context.sleepFor(context.ACCELERATION_TIME); // Simulates the acceleration time
         context.setDroneState(new AscendingState()); // The drone becomes on route to the fire zone
@@ -58,7 +58,7 @@ class AscendingState extends InBaseState {
      */
     @Override
     public void handle(Drone context) {
-        context.checkIfTaskSwitch();    //check for change in task
+        //context.checkIfTaskSwitch();    //check for change in task
         double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent()); // Calculates the travel time of the zone
         context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime)); // Adds the local time
         context.sleepFor(context.ACCELERATION_TIME);
@@ -119,11 +119,19 @@ class JammedState extends InFieldState {
 class CorruptState extends InFieldState {
     @Override
     public void handle(Drone context) {
-        System.out.println("["+context.getName() + "] MESSAGE RECEIVED IS CORRUPTED."); // Prints a message that the packet that was received got corrupted
-        context.setHandledEvent(context.getCurrentEvent());  // Sets the handled event as the current event
-        context.setCurrentEvent(null); // Sets the current event as null
-        context.setAssignedEvent(null); // Sets the assigned event as null
-        context.setDroneState(new AvailableState()); // Makes the drone available again
+        try {
+            System.out.println("["+context.getName() + "] MESSAGE RECEIVED IS CORRUPTED."); // Prints a message that the packet that was received got corrupted
+            context.setHandledEvent(context.getCurrentEvent());  // Sets the handled event as the current event
+            context.setCurrentEvent(null); // Sets the current event as null
+            context.setAssignedEvent(null); // Sets the assigned event as null
+            System.out.println("["+context.getName() + "] RESTARTING DRONE...");
+            Thread.sleep(10000); // Sleeps for 10 second to simulate that its being restarted
+            System.out.println("["+context.getName() + "] DRONE RESTARTED.");
+            context.setDroneState(new AvailableState()); // Makes the drone available again
+        }
+        catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
 

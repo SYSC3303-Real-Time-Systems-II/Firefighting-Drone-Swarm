@@ -99,7 +99,7 @@ class DroneTest {
         // Create a Zone whose center is computed as the midpoint of its start and end coordinates.
         // For example, let the zone start at (0,0) and end at (20,0) so that the center is (10,0).
         Zone zone = new Zone(1, new Coordinate(0, 0), new Coordinate(20, 0));
-        InputEvent event = new InputEvent("14:00:00", 1, "FIRE_DETECTED", "Low", Status.UNRESOLVED);
+        InputEvent event = new InputEvent("14:00:00", 1, "FIRE_DETECTED", "Low", Status.UNRESOLVED, null);
         event.setZone(zone);
         // With currentCoordinates = (0,0), distance from (0,0) to (10,0) is 10.
         // Travel time = distance / TOP_SPEED = 10 / 20.8.
@@ -130,4 +130,29 @@ class DroneTest {
         // Allow some tolerance for thread scheduling delays.
         assertTrue(elapsed >= 500);
     }
+
+    /**
+     * Tests that the drone enters the correct state when it encounters a fault
+     */
+//    @Test
+//    public void testDroneFaultState() {
+//        drone.setAssignedEvent(new InputEvent("12:00:00", 4, "DRONE_REQUEST", "Low", Status.UNRESOLVED, FaultType.STUCK));
+//
+//        if (drone.getAssignedEvent().getFaultType() == FaultType.STUCK) {
+//            DroneStateMachine DSM = new DroneStateMachine() {
+//                @Override
+//                public void handle(Drone context) {
+//                    //
+//                }
+//            };
+//            DSM.handle(drone);
+//            assertTrue(drone.getDroneState() instanceof AvailableState);
+//        }
+//        else if (drone.getAssignedEvent().getFaultType() == FaultType.JAMMED) {
+//
+//        }
+//        else if (drone.getAssignedEvent().getFaultType() == FaultType.CORRUPT) {
+//
+//        }
+//    }
 }

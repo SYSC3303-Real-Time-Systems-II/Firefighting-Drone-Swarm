@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for the InputEvent class to ensure correct initialization and behavior of its public methods.
@@ -17,7 +18,7 @@ class InputEventTest {
      */
     @BeforeEach
     void setUp() {
-        event = new InputEvent("11:30:00", 3, "FIRE_DETECTED", "High", Status.UNRESOLVED);
+        event = new InputEvent("11:30:00", 3, "FIRE_DETECTED", "High", Status.UNRESOLVED, null);
     }
 
     /**
@@ -26,6 +27,27 @@ class InputEventTest {
     @Test
     void getEventType() {
         assertEquals(EventType.FIRE_DETECTED, event.getEventType());
+    }
+
+    /**
+     * Tests the retrieval of the event fault type for null and non-null types.
+     */
+    @Test
+    void getEventFaultType() {
+        assertNull(event.getFaultType());
+
+        InputEvent eventWithFault = new InputEvent("12:00:00", 4, "DRONE_REQUEST", "Low", Status.UNRESOLVED, FaultType.STUCK);
+        assertEquals(FaultType.STUCK, eventWithFault.getFaultType());
+    }
+
+    /**
+     * Tests the ability to set a fault type to null and then retrieve it.
+     */
+    @Test
+    void setAndGetFaultType() {
+        InputEvent eventWithFault = new InputEvent("12:00:00", 4, "DRONE_REQUEST", "Low", Status.UNRESOLVED, FaultType.STUCK);
+        eventWithFault.setFaultType(null);
+        assertNull(event.getFaultType());
     }
 
     /**
