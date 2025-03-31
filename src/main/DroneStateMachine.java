@@ -150,6 +150,7 @@ class CruisingState extends InFieldState {
     public void handle(Drone context) {
         double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
         int currentTime = 0;
+        System.out.println("********** out  "+ travelZoneTime);
 
         while (currentTime < travelZoneTime) {
             // Check for task switch every iteration
@@ -213,22 +214,40 @@ class DropAgentState extends InFieldState {
  * State where the drone returns to the base after handling an event.
  */
 class ReturningToBaseState extends InFieldState {
-    /**
-     * Handles the returning to base state by simulating the travel back.
-     *
-     * @param context The current drone instance.
-     */
     @Override
-    public void handle(Drone context){
-        double travelZoneTime2 = context.calculateZoneTravelTime(context.getCurrentEvent());
-        context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime2 - 4));
-        context.sleepFor(travelZoneTime2); // Simulates the travel zone time
-        System.out.println("["+context.getName() + "] ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the drone has arrived back and is now ready for the next event
+    public void handle(Drone context) {
+        // Calculate time to return to base (0,0) from current position
+        double travelTime = context.calculateReturnTravelTime();
+        int currentTime = 0;
+
+        while (currentTime < travelTime) {
+            context.checkIfTaskSwitch();
+
+            // Recalculate in case position changed mid-flight
+            travelTime = context.calculateReturnTravelTime();
+            if (currentTime >= travelTime) break;
+
+            double timeIncrement = (travelTime - currentTime) < 1 ?
+                    (travelTime - currentTime) : 1;
+
+            // Update position towards base
+            context.updateReturnLocation(timeIncrement);
+            context.sleepFor(timeIncrement);
+            context.drainBattery(timeIncrement);
+
+            currentTime += timeIncrement;
+            context.setLocalTime(context.getLocalTime().plusSeconds((long) timeIncrement));
+        }
+
+        // Ensure final position is exactly at base
+        context.setCurrentCoordinates(new Coordinate(0, 0));
+        System.out.println("[" + context.getName() + "] ARRIVED BACK AT BASE AT TIME: " + context.getLocalTime());
+
+        // Reset event state and transition to refill
         context.setHandledEvent(context.getCurrentEvent());
-        context.setChangedEvent(false);
         context.setCurrentEvent(null);
         context.setAssignedEvent(null);
-        context.drainBattery(travelZoneTime2);
+        context.drainBattery(travelTime);
         context.setDroneState(new RefillState());
     }
 }

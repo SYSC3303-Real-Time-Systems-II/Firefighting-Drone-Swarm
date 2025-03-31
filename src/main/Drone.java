@@ -187,7 +187,7 @@ public class Drone implements Runnable{
     public void drainBattery(double seconds) {
         double drainAmount = seconds * BATTERY_DRAIN_RATE;
         batteryLevel = Math.max(0, batteryLevel - drainAmount);
-        System.out.println(getName() + ": Remaining battery " + String.format("%.2f", batteryLevel)+"%") ;
+        System.out.println(getName() + ": Remaining battery " + String.format("%.2f", batteryLevel) + "%");
     }
 
     /**
@@ -289,6 +289,37 @@ public class Drone implements Runnable{
             setAssignedEvent(null); // Makes the assigned event null now
         }
     }
+
+    public double calculateReturnTravelTime() {
+        // Calculate distance to base (0,0)
+        double distance = Math.sqrt(Math.pow(currentCoordinates.getX(), 2) + Math.pow(currentCoordinates.getY(), 2));
+        return distance / TOP_SPEED;
+    }
+
+    public void updateReturnLocation(double seconds) {
+        Coordinate base = new Coordinate(0, 0);
+        double distanceToBase = Math.sqrt(Math.pow(currentCoordinates.getX() - base.getX(), 2) + Math.pow(currentCoordinates.getY() - base.getY(), 2));
+
+        if (distanceToBase == 0) return;
+
+        double directionX = (base.getX() - currentCoordinates.getX()) / distanceToBase;
+        double directionY = (base.getY() - currentCoordinates.getY()) / distanceToBase;
+
+        double newX = currentCoordinates.getX() + directionX * TOP_SPEED * seconds;
+        double newY = currentCoordinates.getY() + directionY * TOP_SPEED * seconds;
+
+        // Snap to base if very close
+        if (Math.abs(newX) < 0.1) newX = 0;
+        if (Math.abs(newY) < 0.1) newY = 0;
+
+        currentCoordinates = new Coordinate(newX, newY);
+    }
+
+    // Add this setter for coordinates
+    public synchronized void setCurrentCoordinates(Coordinate coords) {
+        this.currentCoordinates = coords;
+    }
+
 
     @Override
     public void run() {

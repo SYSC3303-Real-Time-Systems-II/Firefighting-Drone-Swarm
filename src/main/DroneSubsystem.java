@@ -16,6 +16,7 @@ public class DroneSubsystem implements Runnable {
     private final ConcurrentHashMap<Integer, Drone> workingDrones = new ConcurrentHashMap<>();
 
     private InputEvent currentEvent;
+    private DroneModel droneModel;
 
     public DroneSubsystem(String name, int numDrones) {
         this.name = name;
@@ -26,6 +27,11 @@ public class DroneSubsystem implements Runnable {
             availableDrones.add(drone);
             new Thread(drone).start();
         }
+
+        //start drone model thread after its given the
+        droneModel = new DroneModel(drones);
+        new Thread(droneModel).start();
+
         try {
             this.socket = new DatagramSocket(6000);
             this.socket.setSoTimeout(2000);
