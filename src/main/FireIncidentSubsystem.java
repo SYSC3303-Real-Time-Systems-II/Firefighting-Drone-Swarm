@@ -18,7 +18,6 @@ public class FireIncidentSubsystem implements Runnable {
     private DatagramSocket sendReceiveSocket;
     private FireIncidentSubsystemState currentState = FireIncidentSubsystemState.SENDING_DATA;
     private boolean zonesSent = false;
-    private int eventCounter = 0;
     private long lastSendTime = 0;
 
     /**
@@ -35,7 +34,7 @@ public class FireIncidentSubsystem implements Runnable {
             this.inputEvents = readInputEvents(inputEventFileName);
             this.zonesList = readZones(inputZoneFileName);
             this.current_time = null;
-            this.sendReceiveSocket = new DatagramSocket(4000);
+            this.sendReceiveSocket = new DatagramSocket(7000);
             this.sendReceiveSocket.setSoTimeout(4000); // 4-second timeout
         } catch (IOException e) {
             e.printStackTrace();
@@ -89,8 +88,10 @@ public class FireIncidentSubsystem implements Runnable {
                 String line = scanner.nextLine();
                 String[] parts = line.split(","); // Split by comma for CSV
 
+                FaultType faultType = parts[4].trim().equalsIgnoreCase("null") ? null : FaultType.valueOf(parts[4].trim().toUpperCase()); // Gets the fault type if null makes it null
+
                 //Create InputEvent object and add to the inputEvents ArrayList
-                InputEvent event = new InputEvent(parts[0], Integer.parseInt(parts[1]), parts[2], parts[3],Status.UNRESOLVED);
+                InputEvent event = new InputEvent(parts[0], Integer.parseInt(parts[1]), parts[2], parts[3],Status.UNRESOLVED, faultType);
                 inputEvents.add(event);
             }
             return inputEvents;
@@ -165,25 +166,6 @@ public class FireIncidentSubsystem implements Runnable {
     }
 
     /**
-     * A method that is used to handle when a package has been sent by the scheduler for acknowledgment.
-     */
-    private void receiveUDPMessage(){
-        try{
-            byte[] receiveData = new byte[6000];
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length); // The received data packet that weill be received from teh scheduler
-            sendReceiveSocket.receive(receivePacket); // Receives the packet
-
-            // Deserialize the byte array into a RelayPackage object
-            RelayPackage receivedPackage = deserializeRelayPackage(receivePacket);
-
-            System.out.println("["+this.name + "] Received <-- " + receivedPackage.getRelayPackageID() + " FROM: " + Systems.Scheduler); // Prints out the confirmation message that it got the data from the scheduler
-        }catch (IOException | ClassNotFoundException e){
-            e.printStackTrace();
-        }
-    }
-
-
-    /**
      * The run method is executed when the thread starts.
      * It sends zone information and input events to the Scheduler via the RelayBuffer.
      * It also reads the RelayBuffer to receive acknowledgments from the Scheduler regarding the events.
@@ -191,7 +173,7 @@ public class FireIncidentSubsystem implements Runnable {
      */
     @Override
     public void run() {
-        System.out.println("["+this.name + "] subsystem started...");
+        System.out.println("["+this.name + "] FIREINCIDENTSUBSYSTEM STARTED...");
 
         // Initial zone package
         sendZonePackage();
@@ -230,7 +212,7 @@ public class FireIncidentSubsystem implements Runnable {
         } else if (!inputEvents.isEmpty()) {
             InputEvent event = inputEvents.remove();
             RelayPackage pkg = new RelayPackage(
-                    "INPUT_EVENT_" + eventCounter++,
+                    "INPUT_EVENT_" + event.getEventID(),
                     Systems.Scheduler,
                     event,
                     null
@@ -250,7 +232,15 @@ public class FireIncidentSubsystem implements Runnable {
             sendReceiveSocket.receive(packet);
 
             RelayPackage received = deserializeRelayPackage(packet);
-            System.out.println("["+this.name + "] Received confirmation for " + received.getRelayPackageID());
+
+            if (received.getEvent().getFaultType() != null){
+                System.out.println("["+this.name + "] RECEIVED FAULT CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID() + " WILL RESEND FOR RESCHEDULING TO: " + Systems.Scheduler);
+                received.getEvent().setFaultType(null); // Sets the fault type to null and attempts to resend it
+                inputEvents.add(received.getEvent()); // Adds the input event again to be sent out after resolving the error
+            }
+            else {
+                System.out.println("["+this.name + "] RECEIVED COMPLETED CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID());
+            }
 
             // Only switch to sending if we have more events
             currentState = inputEvents.isEmpty() ? FireIncidentSubsystemState.IDLE : FireIncidentSubsystemState.SENDING_DATA;
@@ -273,7 +263,17 @@ public class FireIncidentSubsystem implements Runnable {
             sendReceiveSocket.receive(packet);
 
             RelayPackage received = deserializeRelayPackage(packet);
-            System.out.println("["+this.name + "] Received confirmation for " + received.getRelayPackageID());
+
+            if (received.getEvent().getFaultType() == null){
+                System.out.println("["+this.name + "] RECEIVED COMPLETED CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID());
+            }
+            else {
+                System.out.println("["+this.name + "] RECEIVED FAULT CONFIRMATION: " + received.getRelayPackageID() + " FOR INPUT_EVENT_" + received.getEvent().getEventID() + " WILL RESEND FOR RESCHEDULING TO: " + Systems.Scheduler);
+                received.getEvent().setFaultType(null); // Sets the fault type to null and attempts to resend it
+                inputEvents.add(received.getEvent()); // Adds the input event again to be sent out after resolving the error
+            }
+
+            currentState = inputEvents.isEmpty() ? FireIncidentSubsystemState.IDLE : FireIncidentSubsystemState.SENDING_DATA;
 
         } catch (SocketTimeoutException e) {
             // Expected in idle state
@@ -289,10 +289,13 @@ public class FireIncidentSubsystem implements Runnable {
         }
 
         Duration duration = Duration.between(current_time, event.getTime());
+
+
         if (!duration.isZero()) {
             try {
                 // Scale real-world time (1 minute = 100ms)
-                Thread.sleep(duration.toMinutes() * 100);
+                ///ISSUE HERE WITH THE TIME TODO
+                Thread.sleep(1000);
                 current_time = event.getTime();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -304,7 +307,6 @@ public class FireIncidentSubsystem implements Runnable {
      * Main method to run the thread.
      */
     public static void main(String[] args) {
-
         // Initialize and create thread for the FireIncidentSubsystem
         FireIncidentSubsystem fis1 = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv");
         Thread fis1_t1 = new Thread(fis1);

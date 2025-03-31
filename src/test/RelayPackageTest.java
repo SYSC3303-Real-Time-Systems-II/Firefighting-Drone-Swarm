@@ -36,7 +36,7 @@ class RelayPackageTest {
 
         assertEquals(null, zonePackage.getEvent()); // Checks that there is no event
 
-        InputEvent inputEvent = new InputEvent("14:00:15",1, "FIRE_DETECTED", "High", Status.UNRESOLVED); // Creates an event object
+        InputEvent inputEvent = new InputEvent("14:00:15",1, "FIRE_DETECTED", "High", Status.UNRESOLVED, null); // Creates an event object
 
         zonePackage.setEvent(inputEvent); // Sets the newly created event
 

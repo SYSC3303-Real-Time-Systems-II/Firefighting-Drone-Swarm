@@ -38,6 +38,14 @@ public class RelayPackage implements Serializable {
     }
 
     /**
+     * Sets the unique relay package ID.
+     * @param relayPackageID the id to be set.
+     */
+    public void setRelayPackageID(String relayPackageID) {
+        RelayPackageID = relayPackageID;
+    }
+
+    /**
      * Returns the system that should receive this package.
      *
      * @return The receiver system.

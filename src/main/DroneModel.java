@@ -13,11 +13,12 @@ public class DroneModel implements Runnable{
     public void run() {
         while (true) {
             for (Drone drone : drones) {
-                Coordinate droneCoords = drone.getCurrentCoordinates();
-                hm.put(drone.getName(), droneCoords);
+                // Use synchronized access to coordinates
+                synchronized (drone) {
+                    hm.put(drone.getName(), drone.getCurrentCoordinates());
+                }
             }
-
-             //printing for debugging -- gives current location of the drones
+                //for debugging -- will print out each drones curr location
 //            for (Map.Entry<String, Coordinate> entry : hm.entrySet()) {
 //                System.out.println("(********************"+entry.getKey() + " -> " + entry.getValue());
 //            }

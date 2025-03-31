@@ -29,7 +29,7 @@ public class Drone implements Runnable{
     private Coordinate currentCoordinates;
     private InputEvent assignedEvent;
     private InputEvent currentEvent;
-    private InputEvent completedEvent;
+    private InputEvent handledEvent; // Completed or failed events
 
     /**
      * The constructor of the done system assigns a new ID and the state as available to start.
@@ -41,9 +41,8 @@ public class Drone implements Runnable{
         this.droneState = new AvailableState();
         this.currentCoordinates = new Coordinate(0,0);
         this.assignedEvent = null;
-        this.completedEvent = null;
+        this.handledEvent = null;
         this.changedEvent = false;
-
     }
 
     /**
@@ -125,18 +124,18 @@ public class Drone implements Runnable{
      * Gets the completed event of the drone.
      * @return the completed event of the drone.
      */
-    public InputEvent getCompletedEvent() {
+    public InputEvent getHandledEvent() {
         synchronized (this) {
-            return completedEvent;
+            return handledEvent;
         }
     }
 
     /**
      * Sets the completed of the drone.
-     * @param completedEvent the completed event of the drone.
+     * @param handledEvent the completed event of the drone.
      */
-    public void setCompletedEvent(InputEvent completedEvent){
-        this.completedEvent = completedEvent;
+    public void setHandledEvent(InputEvent handledEvent){
+        this.handledEvent = handledEvent;
     }
 
     /**
@@ -259,17 +258,12 @@ public class Drone implements Runnable{
      * @param seconds the time in seconds.
      */
     public void updateLocation(double seconds){
+        Coordinate fireCoordinates = currentEvent.getZone().getZoneCenter();
 
-        Coordinate locationCoordinates;
-        if (currentEvent != null){
-            locationCoordinates = currentEvent.getZone().getZoneCenter();
-        } else {
-            locationCoordinates = new Coordinate(0,0);  //going back to base
-        }
+        double distanceToTravel = Math.sqrt(Math.pow(fireCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(fireCoordinates.getY() - currentCoordinates.getY(), 2));
 
-        double distanceToTravel = Math.sqrt(Math.pow(locationCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(locationCoordinates.getY() - currentCoordinates.getY(), 2));
-        double directionX = ((locationCoordinates.getX() - currentCoordinates.getX()) / distanceToTravel);
-        double directionY = ((locationCoordinates.getY() - currentCoordinates.getY()) / distanceToTravel);
+        double directionX = ((fireCoordinates.getX() - currentCoordinates.getX()) / distanceToTravel);
+        double directionY = ((fireCoordinates.getY() - currentCoordinates.getY()) / distanceToTravel);
 
         double updatedX = currentCoordinates.getX() + directionX * TOP_SPEED * seconds;
         double updatedY = currentCoordinates.getY() + directionY * TOP_SPEED * seconds;
@@ -278,24 +272,52 @@ public class Drone implements Runnable{
     }
 
 
-
     /**
      * Wait for task to be given to the drone.
      */
     public void waitForTask(){
         synchronized (this) {
-
             while (this.assignedEvent == null) {
                 try {
-                    System.out.println("["+ this.name + "] WAITING FOR EVENT");
-                    wait();
+                    if (this.getDroneState() instanceof StuckState || this.getDroneState() instanceof JammedState) { // If the drone was stuck or the nozzle is broken makes the drone unavailable
+                        System.out.println("[" + this.name + "] NOW OFFLINE."); // Makes the drone offline
+                    }
+                    else {
+                        System.out.println("[" + this.name + "] WAITING FOR EVENT."); // Else prints that the drone is waiting for an event
+                    }
+                    wait(); // Waits
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             }
-            setCurrentEvent(this.assignedEvent); //move the assignedEvent to Current Event
-            setAssignedEvent(null);
+            setCurrentEvent(this.assignedEvent); // Move the assignedEvent to Current Event
+            setAssignedEvent(null); // Makes the assigned event null now
         }
+    }
+
+    public double calculateReturnTravelTime() {
+        // Calculate distance to base (0,0)
+        double distance = Math.sqrt(Math.pow(currentCoordinates.getX(), 2) + Math.pow(currentCoordinates.getY(), 2));
+        return distance / TOP_SPEED;
+    }
+
+    public void updateReturnLocation(double seconds) {
+        Coordinate base = new Coordinate(0, 0);
+        double distanceToBase = Math.sqrt(Math.pow(currentCoordinates.getX() - base.getX(), 2) + Math.pow(currentCoordinates.getY() - base.getY(), 2));
+
+        if (distanceToBase == 0) return;
+
+        double directionX = (base.getX() - currentCoordinates.getX()) / distanceToBase;
+        double directionY = (base.getY() - currentCoordinates.getY()) / distanceToBase;
+
+        double newX = currentCoordinates.getX() + directionX * TOP_SPEED * seconds;
+        double newY = currentCoordinates.getY() + directionY * TOP_SPEED * seconds;
+
+        // Snap to base if very close
+        if (Math.abs(newX) < 0.1) newX = 0;
+        if (Math.abs(newY) < 0.1) newY = 0;
+
+        currentCoordinates = new Coordinate(newX, newY);
     }
 
     @Override
