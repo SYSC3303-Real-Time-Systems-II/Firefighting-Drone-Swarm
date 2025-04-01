@@ -7,7 +7,6 @@ public class DroneModel implements Runnable{
     public DroneModel (List<Drone> drones){
         this.drones = drones;
     }
-
     @Override
     public void run() {
         while (true) {
@@ -22,5 +21,9 @@ public class DroneModel implements Runnable{
 //                System.out.println("(********************"+entry.getKey() + " -> " + entry.getValue());
 //            }
         }
+    }
+
+    public Map <String, Coordinate> getCoordinates() {
+        return hm;
     }
 }

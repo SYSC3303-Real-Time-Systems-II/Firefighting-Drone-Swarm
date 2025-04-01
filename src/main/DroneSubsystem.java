@@ -9,7 +9,6 @@ public class DroneSubsystem implements Runnable {
     private final String name;
     private final DatagramSocket socket;
     private DroneSubsystemState currentState = DroneSubsystemState.WAITING;
-
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
     private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
@@ -61,7 +60,6 @@ public class DroneSubsystem implements Runnable {
     public ConcurrentHashMap<Integer, Drone> getWorkingDrones() {
         return workingDrones;
     }
-
 
     @Override
     public void run() {
@@ -210,8 +208,46 @@ public class DroneSubsystem implements Runnable {
         return (InputEvent) ois.readObject();
     }
 
+    public void startGUIUpdates() {
+        new Thread(() -> {
+            try (DatagramSocket guisocket = new DatagramSocket()) {
+                while (true) {
+                    // 1) gather statuses from droneModel
+                    List<DroneStatus> statuses = new ArrayList<>();
+                    Map<String, Coordinate> coords = droneModel.getCoordinates();
+                    for (Map.Entry<String, Coordinate> e : coords.entrySet()) {
+                        statuses.add(new DroneStatus(e.getKey(), e.getValue().getX(), e.getValue().getY()));
+                    }
+
+                    // 2) serialize
+                    byte[] data = serializeDroneStatusList(statuses);
+
+                    // 3) send to GUI port 8000
+                    DatagramPacket packet = new DatagramPacket(
+                            data, data.length,
+                            InetAddress.getLocalHost(), 8000
+                    );
+                    guisocket.send(packet);
+
+                    Thread.sleep(2000);
+                }
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private byte[] serializeDroneStatusList(List<DroneStatus> list) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(list);
+        oos.flush();
+        return bos.toByteArray();
+    }
+
     public static void main(String[] args) {
         DroneSubsystem subsystem = new DroneSubsystem("DS", 3);
         new Thread(subsystem).start();
+        subsystem.startGUIUpdates();
     }
 }
