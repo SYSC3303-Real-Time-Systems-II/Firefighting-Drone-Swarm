@@ -1,3 +1,4 @@
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -156,6 +157,7 @@ public class Scheduler implements Runnable {
             // Check for RelayPackage from FireIncidentSubsystem
             if (receivedPackage.getRelayPackageID().contains("ZONE_PKG")) { // If a zone package was received from the fire incident subsystem
                 this.addZones(receivedPackage.getZone(), this.systemType, this.name);
+                sendZoneInfoToGUI(new ArrayList<>(zones.values()));
             }
             else { // If we have received an event package
                 System.out.println("["+this.name + "] RECEIVED AN EVENT <-- " + receivedPackage.getRelayPackageID() + " (" + receivedPackage.getEvent().toString() + ")" + " FROM: " + Systems.FireIncidentSubsystem); // Prints out a message that the event was received
@@ -300,6 +302,26 @@ public class Scheduler implements Runnable {
         }
         currentState = SchedulerState.RECEIVE_FROM_FIS;
     }
+    private void sendZoneInfoToGUI(List<Zone> zoneList) {
+        try (DatagramSocket guiSocket = new DatagramSocket()) {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(zoneList);    // Write the *raw* list
+            oos.flush();
+
+            byte[] data = bos.toByteArray();
+
+            DatagramPacket packet = new DatagramPacket(
+                    data, data.length,
+                    InetAddress.getLocalHost(), 8000
+            );
+            guiSocket.send(packet);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     /**
      * The run method is executed when the thread starts.

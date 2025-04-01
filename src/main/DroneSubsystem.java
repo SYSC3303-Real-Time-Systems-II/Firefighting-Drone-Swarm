@@ -212,7 +212,7 @@ public class DroneSubsystem implements Runnable {
         new Thread(() -> {
             try (DatagramSocket guisocket = new DatagramSocket()) {
                 while (true) {
-                    // 1) gather statuses from droneModel
+                    // Gather statuses from droneModel
                     List<DroneStatus> statuses = new ArrayList<>();
                     Map<String, Coordinate> coords = droneModel.getCoordinates();
                     Map<String, DroneStateMachine> states = droneModel.getStates();
@@ -224,10 +224,8 @@ public class DroneSubsystem implements Runnable {
                         String stateName = stateMachine.getClass().getSimpleName();
                         statuses.add(new DroneStatus(droneName, stateName, coord.getX(), coord.getY()));
                     }
-                    // 2) serialize
+                    // Send to GUI
                     byte[] data = serializeDroneStatusList(statuses);
-
-                    // 3) send to GUI port 8000
                     DatagramPacket packet = new DatagramPacket(
                             data, data.length,
                             InetAddress.getLocalHost(), 8000
