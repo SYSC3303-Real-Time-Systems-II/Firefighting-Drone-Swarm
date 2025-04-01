@@ -42,20 +42,52 @@ public class DroneMapView extends JPanel {
 
         // 2) Draw drones
         if (droneStatuses != null) {
-            g.setColor(Color.RED);
             for (DroneStatus status : droneStatuses) {
-                // Convert real coords to grid cells
+                // Convert real coords (x,y) to grid cells
                 int cellX = (int)(status.getX() / CELL_SIZE);
                 int cellY = (int)(status.getY() / CELL_SIZE);
 
                 if (cellX >= 0 && cellX < COLS && cellY >= 0 && cellY < ROWS) {
+                    // Decide color based on the drone's state
+                    String stateName = status.getState(); // e.g. "AvailableState"
+                    Color color;
+                    switch (stateName) {
+                        case "AvailableState":
+                            color = Color.BLUE;
+                            break;
+                        case "AscendingState":
+                            color = Color.ORANGE;
+                            break;
+                        case "CruisingState":
+                            color = Color.CYAN;
+                            break;
+                        case "DropAgentState":
+                            color = Color.GREEN;
+                            break;
+                        case "ReturningToBaseState":
+                            color = Color.MAGENTA;
+                            break;
+                            default:
+                                color = Color.BLACK;
+                    }
+
+                    // Draw a filled oval in that cell
                     int padding = 4;
                     int diameter = CELL_SIZE - padding;
                     int drawX = cellX * CELL_SIZE + padding / 2;
                     int drawY = cellY * CELL_SIZE + padding / 2;
+
+                    g.setColor(color);
                     g.fillOval(drawX, drawY, diameter, diameter);
+
+                    // Optional: draw the drone's name or state text
+                    g.setColor(Color.BLACK);
+                    g.drawString(status.getDroneName(), drawX + 2, drawY + 12);
+                    // or show state
+                    // g.drawString(stateName, drawX + 2, drawY + 24);
                 }
             }
         }
     }
+
 }

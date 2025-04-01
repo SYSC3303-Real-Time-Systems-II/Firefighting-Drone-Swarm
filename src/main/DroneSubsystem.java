@@ -215,10 +215,15 @@ public class DroneSubsystem implements Runnable {
                     // 1) gather statuses from droneModel
                     List<DroneStatus> statuses = new ArrayList<>();
                     Map<String, Coordinate> coords = droneModel.getCoordinates();
-                    for (Map.Entry<String, Coordinate> e : coords.entrySet()) {
-                        statuses.add(new DroneStatus(e.getKey(), e.getValue().getX(), e.getValue().getY()));
-                    }
+                    Map<String, DroneStateMachine> states = droneModel.getStates();
 
+                    for (String droneName: coords.keySet()) {
+                        Coordinate coord = coords.get(droneName);
+                        DroneStateMachine stateMachine = states.get(droneName);
+                        // Convert 'stateMachine' to a short string
+                        String stateName = stateMachine.getClass().getSimpleName();
+                        statuses.add(new DroneStatus(droneName, stateName, coord.getX(), coord.getY()));
+                    }
                     // 2) serialize
                     byte[] data = serializeDroneStatusList(statuses);
 

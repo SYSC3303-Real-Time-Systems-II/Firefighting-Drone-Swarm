@@ -4,11 +4,13 @@ public class DroneStatus implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final String droneName;
+    private final String state;
     private final double x;
     private final double y;
 
-    public DroneStatus(String droneName, double x, double y) {
+    public DroneStatus(String droneName, String state, double x, double y) {
         this.droneName = droneName;
+        this.state = state;
         this.x = x;
         this.y = y;
     }
@@ -23,6 +25,10 @@ public class DroneStatus implements Serializable {
 
     public double getY() {
         return y;
+    }
+
+    public String getState() {
+        return state;
     }
 
     @Override

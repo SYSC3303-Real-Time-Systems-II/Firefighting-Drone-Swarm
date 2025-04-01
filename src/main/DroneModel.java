@@ -1,8 +1,8 @@
 import java.util.*;
 public class DroneModel implements Runnable{
     private List<Drone> drones;
-    private Map <String, Coordinate> hm = new HashMap<>();
-
+    private Map <String, Coordinate> coords = new HashMap<>();
+    private Map <String, DroneStateMachine> states = new HashMap<>();
 
     public DroneModel (List<Drone> drones){
         this.drones = drones;
@@ -13,7 +13,8 @@ public class DroneModel implements Runnable{
             for (Drone drone : drones) {
                 // Use synchronized access to coordinates
                 synchronized (drone) {
-                    hm.put(drone.getName(), drone.getCurrentCoordinates());
+                    coords.put(drone.getName(), drone.getCurrentCoordinates());
+                    states.put(drone.getName(), drone.getDroneState());
                 }
             }
                 //for debugging -- will print out each drones curr location
@@ -24,6 +25,9 @@ public class DroneModel implements Runnable{
     }
 
     public Map <String, Coordinate> getCoordinates() {
-        return hm;
+        return coords;
+    }
+    public Map <String, DroneStateMachine> getStates() {
+        return states;
     }
 }
