@@ -69,7 +69,7 @@ public class DroneMapView extends JPanel {
             int xEnd = (int) (zone.getZoneEnd().getX() / CELL_SIZE) * CELL_SIZE;
             int yEnd = (int) (zone.getZoneEnd().getY() / CELL_SIZE) * CELL_SIZE;
             g.drawRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
-            g.drawString("Zone " + zone.getZoneID(), xStart + 5, yStart + 15);
+            g.drawString("Zone " + zone.getZoneID(), xStart + 20, yStart + 20);
         }
     }
     private void drawDrones(Graphics g) {
@@ -82,25 +82,19 @@ public class DroneMapView extends JPanel {
                 g.setColor(color);
                 g.fillOval(cellX * CELL_SIZE + 4, cellY * CELL_SIZE + 4, CELL_SIZE - 8, CELL_SIZE - 8);
                 g.setColor(Color.BLACK);
-                g.drawString(status.getDroneName(), cellX * CELL_SIZE + 4, cellY * CELL_SIZE + 20);
+                g.drawString(status.getDroneName(), cellX * CELL_SIZE, cellY * CELL_SIZE);
             }
         }
     }
 
     private Color getDroneColour(String state) {
-        switch (state) {
-            case "AvailableState":
-                return Color.BLUE;
-            case "AscendingState":
-                return Color.ORANGE;
-            case "CruisingState":
-                return Color.CYAN;
-            case "DropAgentState":
-                return Color.GREEN;
-            case "ReturningToBaseState":
-                return Color.MAGENTA;
-            default:
-                return Color.BLACK;
-        }
+        return switch (state) {
+            case "AvailableState" -> Color.BLUE;
+            case "AscendingState" -> Color.ORANGE;
+            case "CruisingState" -> Color.CYAN;
+            case "DropAgentState" -> Color.GREEN;
+            case "ReturningToBaseState" -> Color.MAGENTA;
+            default -> Color.BLACK;
+        };
     }
 }
