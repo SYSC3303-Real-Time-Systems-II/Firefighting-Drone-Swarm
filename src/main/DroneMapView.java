@@ -34,12 +34,10 @@ public class DroneMapView extends JPanel {
     }
 
     public void displayEvent(InputEvent event) {
-        if (event.getEventType() == EventType.FIRE_DETECTED){
-            if (event.getStatus() == Status.COMPLETE) {
-                completedEvents.put(event.getZoneId(), event);
-            }
-            else fireEvents.put(event.getZoneId(), event);
+        if (event.getStatus() == Status.COMPLETE) {
+            completedEvents.put(event.getZoneId(), event);
         }
+        if (event.getStatus() == Status.UNRESOLVED) fireEvents.put(event.getZoneId(), event);
 
         else if (event.getFaultType() != null) {
             failedEvents.put(event.getZoneId(), event);
