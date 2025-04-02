@@ -154,11 +154,9 @@ class CruisingState extends InFieldState {
 
         while (currentTime < travelZoneTime) {
             // Check for task switch every iteration
-            context.checkIfTaskSwitch();
-
-            // Recalculate travel time if the event changed
-            travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
-            if (currentTime >= travelZoneTime) break;
+            if (context.checkIfTaskSwitch()) {
+                travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
+            }
 
             // Update location and sleep
             if (travelZoneTime - currentTime < 1) {

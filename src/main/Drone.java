@@ -232,7 +232,7 @@ public class Drone implements Runnable{
     /**
      * Check if the task was switched and recalculates and moves to state.
      */
-    public void checkIfTaskSwitch() {
+    public boolean checkIfTaskSwitch() {
         InputEvent assignedTask = getAssignedEvent();
         if (assignedTask != null) {
             InputEvent oldTask = getCurrentEvent();
@@ -245,7 +245,9 @@ public class Drone implements Runnable{
             if (droneState instanceof CruisingState) {
                 setDroneState(new AscendingState()); // Restart ascent for new task
             }
+            return true;
         }
+        return false;
     }
 
     /**
