@@ -63,6 +63,7 @@ class AscendingState extends InBaseState {
         context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime)); // Adds the local time
         context.sleepFor(context.ACCELERATION_TIME);
         System.out.println("["+context.getName() + "] ASCENDING AT TIME: " + context.getLocalTime());
+        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.ASCENDING, context.getCurrentEvent(), context.getName());
 
         // Handle if the drone has a fault or not
         if (context.getCurrentEvent().getFaultType() == FaultType.STUCK) { //
@@ -194,6 +195,7 @@ class DropAgentState extends InFieldState {
         double currentCapacity = context.getWaterLevel();
         if (currentCapacity >= waterNeeded) {
             System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.FIRE_EXSTINGUISHED, context.getCurrentEvent(), context.getName());
             context.setWaterLevel(currentCapacity - waterNeeded);
             context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
             context.drainBattery(context.DROP_WATER_TIME);

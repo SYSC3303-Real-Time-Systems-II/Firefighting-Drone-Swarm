@@ -19,6 +19,8 @@ public class DroneSubsystem implements Runnable {
     private DroneModel droneModel;
 
     public DroneSubsystem(String name, int numDrones) {
+        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.STARTING, null, null);
+
         this.name = name;
         // Initialize drone fleet
         for(int i = 0; i < numDrones; i++) {
@@ -38,6 +40,8 @@ public class DroneSubsystem implements Runnable {
         } catch (IOException e) {
             throw new RuntimeException("Failed to initialize UDP socket", e);
         }
+
+
     }
 
     /**
@@ -93,8 +97,9 @@ public class DroneSubsystem implements Runnable {
 
             InputEvent event = deserializeEvent(packet.getData()); // Deserializes the data
             System.out.println("["+this.name + "] RECEIVED EVENT --> " + "INPUT_EVENT_" + event.getEventID() + " (" +  event + ")" + " FROM: " + "SCHEDULER"); // Prints a message that it has received the data
-            currentEvent = event; // Saves the current event
-            currentState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER; // Sets the next state
+            currentEvent = event;
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.RECEIVED_EVENT, this.currentEvent, null);
+            currentState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER;
 
         }catch (SocketTimeoutException e) {
             currentState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER;
@@ -211,7 +216,12 @@ public class DroneSubsystem implements Runnable {
     }
 
     public static void main(String[] args) {
-        DroneSubsystem subsystem = new DroneSubsystem("DS", 3);
-        new Thread(subsystem).start();
+        try {
+            DroneSubsystem subsystem = new DroneSubsystem("DS", 3);
+            new Thread(subsystem).start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 }
