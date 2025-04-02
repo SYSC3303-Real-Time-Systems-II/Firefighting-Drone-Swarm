@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,9 +19,13 @@ public class DroneMapView extends JPanel {
     private Map<Integer, InputEvent> fireEvents = new HashMap<>(); // Store fire events by zone ID for quick access
     private Map<Integer, InputEvent> completedEvents = new HashMap<>();
     private Map<Integer, InputEvent> failedEvents = new HashMap<>();
+    private Image fireImage;
 
     public DroneMapView() {
         setBackground(Color.WHITE);
+        setLayout(new BorderLayout());
+        createMetricsPanel();
+        createLegendPanel();
     }
 
     public void updateDisplay(List<DroneStatus> statuses) {
@@ -59,6 +64,56 @@ public class DroneMapView extends JPanel {
         setPreferredSize(new Dimension(cols * CELL_SIZE, rows * CELL_SIZE));
         revalidate(); // This tells the layout manager to redo the layout based on the new size
         repaint(); // Redraw the component with new dimensions
+    }
+    private void createMetricsPanel() {
+        JPanel metricsPanel = new JPanel();
+        metricsPanel.setLayout(new BoxLayout(metricsPanel, BoxLayout.Y_AXIS));
+        metricsPanel.setBorder(BorderFactory.createTitledBorder("Metrics"));
+        metricsPanel.setPreferredSize(new Dimension(150, 150));
+        metricsPanel.add(Box.createVerticalStrut(5));
+        metricsPanel.add(new JLabel("Response Time: "));
+        this.add(metricsPanel, BorderLayout.SOUTH);
+    }
+
+    private void createLegendPanel() {
+        JPanel legendPanel = new JPanel();
+        legendPanel.setLayout(new BoxLayout(legendPanel, BoxLayout.Y_AXIS));
+        legendPanel.setBorder(BorderFactory.createTitledBorder("Legend"));
+        legendPanel.setPreferredSize(new Dimension(150, 150));
+
+        // Adjust the vertical spacing between legend entries
+        legendPanel.add(Box.createVerticalStrut(5)); // Small vertical space at the top
+
+        legendPanel.add(createLegendEntry(Color.BLUE, "Available"));
+        legendPanel.add(createLegendEntry(Color.ORANGE, "Ascending"));
+        legendPanel.add(createLegendEntry(Color.CYAN, "Cruising"));
+        legendPanel.add(createLegendEntry(Color.GREEN, "Dropping Agent"));
+        legendPanel.add(createLegendEntry(Color.MAGENTA, "Returning to Base"));
+        legendPanel.add(createLegendEntry(Color.BLACK, "Other States"));
+        this.add(legendPanel, BorderLayout.EAST);
+
+    }
+
+    private static Component createLegendEntry(Color color, String text) {
+        JPanel entry = new JPanel();
+        entry.setLayout(new BoxLayout(entry, BoxLayout.X_AXIS));
+        entry.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20)); // Limit height
+
+        JLabel colorLabel = new JLabel();
+        colorLabel.setMinimumSize(new Dimension(10, 10));
+        colorLabel.setPreferredSize(new Dimension(10, 10));
+        colorLabel.setMaximumSize(new Dimension(10, 10));
+        colorLabel.setOpaque(true);
+        colorLabel.setBackground(color);
+
+        JLabel textLabel = new JLabel(" " + text);
+        textLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+
+        entry.add(colorLabel);
+        entry.add(Box.createHorizontalStrut(5)); // Small space between color box and text
+        entry.add(textLabel);
+
+        return entry;
     }
 
     @Override
@@ -107,7 +162,7 @@ public class DroneMapView extends JPanel {
     }
 
     private void drawFires(Graphics g) {
-        System.out.println("Drawing fires...");
+        loadFireImage();
         if (fireEvents != null) {
             System.out.println("Fire events count: " + fireEvents.size());
             System.out.println("fireevents not null");
@@ -117,8 +172,9 @@ public class DroneMapView extends JPanel {
                 System.out.println("fire coords: " + fireCoords);
                 int x = (int) fireCoords.getX() / CELL_SIZE;
                 int y = (int) fireCoords.getY() / CELL_SIZE;
-                g.setColor(Color.RED);
-                g.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                //g.setColor(Color.RED);
+                //g.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                g.drawImage(fireImage, x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, this);
                 g.setColor(Color.BLACK);
                 g.drawString(fireEvent.getSeverity().toString().substring(0,1), x * CELL_SIZE, y * CELL_SIZE -4);
             }
@@ -136,5 +192,13 @@ public class DroneMapView extends JPanel {
         };
     }
 
+    public void loadFireImage() {
+        try {
+            URL imageUrl = getClass().getResource("/fire.png");
+            fireImage = new ImageIcon(imageUrl).getImage();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 }
