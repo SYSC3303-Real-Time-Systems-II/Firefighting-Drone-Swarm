@@ -45,6 +45,9 @@ public class DroneMapController {
                             }
                         }
                     }
+                    else if (receivedObject instanceof InputEvent){
+                        SwingUtilities.invokeLater(()-> view.displayEvent((InputEvent) receivedObject));
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

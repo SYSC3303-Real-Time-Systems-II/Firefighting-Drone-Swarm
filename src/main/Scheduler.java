@@ -164,6 +164,7 @@ public class Scheduler implements Runnable {
                 // Process the event and add it to the inputEvents queue
                 receivedPackage.getEvent().setZone(zones.get(receivedPackage.getEvent().getZoneId())); // Set the zone for the event
                 this.inputEvents.add(receivedPackage.getEvent()); // Adds the input events to the list of input events for the drone subsystem
+                sendEventToGUI(receivedPackage.getEvent());
             }
             return true;
         }catch (SocketTimeoutException e) {
@@ -231,6 +232,7 @@ public class Scheduler implements Runnable {
 
             // Create a confirmation package and place in confirmationPackages queue
             confirmationPackages.add(sendingPackage);
+            sendEventToGUI(sendingPackage.getEvent());
             return true;
 
         } catch (SocketTimeoutException e) {
@@ -304,12 +306,7 @@ public class Scheduler implements Runnable {
     }
     private void sendZoneInfoToGUI(List<Zone> zoneList) {
         try (DatagramSocket guiSocket = new DatagramSocket()) {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(zoneList);    // Write the *raw* list
-            oos.flush();
-
-            byte[] data = bos.toByteArray();
+            byte[] data = serializeObject(zoneList);
 
             DatagramPacket packet = new DatagramPacket(
                     data, data.length,
@@ -320,6 +317,29 @@ public class Scheduler implements Runnable {
         catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void sendEventToGUI(InputEvent event){
+        try (DatagramSocket guiSocket = new DatagramSocket()) {
+            byte[] data = serializeObject(event);
+            DatagramPacket packet = new DatagramPacket(
+                    data, data.length,
+                    InetAddress.getLocalHost(), 8000
+            );
+            guiSocket.send(packet);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private byte[] serializeObject(Object obj) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) {
+            objectStream.writeObject(obj);
+            objectStream.flush();
+        }
+        return byteStream.toByteArray();
     }
 
 

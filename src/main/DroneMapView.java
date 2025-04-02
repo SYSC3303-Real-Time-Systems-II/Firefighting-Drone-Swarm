@@ -1,7 +1,9 @@
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The Swing panel that displays a grid and the positions of multiple drones.
@@ -13,6 +15,9 @@ public class DroneMapView extends JPanel {
 
     private List<DroneStatus> droneStatuses; // The latest statuses from the subsystem
     private List<Zone> zones = new ArrayList<>();
+    private Map<Integer, InputEvent> fireEvents = new HashMap<>(); // Store fire events by zone ID for quick access
+    private Map<Integer, InputEvent> completedEvents = new HashMap<>();
+    private Map<Integer, InputEvent> failedEvents = new HashMap<>();
 
     public DroneMapView() {
         setBackground(Color.WHITE);
@@ -26,6 +31,20 @@ public class DroneMapView extends JPanel {
     public void setZones(List<Zone> newZones) {
         this.zones = newZones;
         updateGridSize();
+    }
+
+    public void displayEvent(InputEvent event) {
+        if (event.getEventType() == EventType.FIRE_DETECTED){
+            if (event.getStatus() == Status.COMPLETE) {
+                completedEvents.put(event.getZoneId(), event);
+            }
+            else fireEvents.put(event.getZoneId(), event);
+        }
+
+        else if (event.getFaultType() != null) {
+            failedEvents.put(event.getZoneId(), event);
+        }
+        repaint();
     }
 
     private void updateGridSize() {
@@ -49,7 +68,9 @@ public class DroneMapView extends JPanel {
         super.paintComponent(g);
         drawGrid(g);
         drawZones(g);
+        drawFires(g);
         drawDrones(g);
+
     }
 
     private void drawGrid(Graphics g) {
@@ -87,6 +108,25 @@ public class DroneMapView extends JPanel {
         }
     }
 
+    private void drawFires(Graphics g) {
+        System.out.println("Drawing fires...");
+        if (fireEvents != null) {
+            System.out.println("Fire events count: " + fireEvents.size());
+            System.out.println("fireevents not null");
+            for (InputEvent fireEvent : fireEvents.values()) {
+                Zone zone = fireEvent.getZone();
+                Coordinate fireCoords = zone.getZoneCenter();
+                System.out.println("fire coords: " + fireCoords);
+                int x = (int) fireCoords.getX() / CELL_SIZE;
+                int y = (int) fireCoords.getY() / CELL_SIZE;
+                g.setColor(Color.RED);
+                g.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                g.setColor(Color.BLACK);
+                g.drawString(fireEvent.getSeverity().toString().substring(0,1), x * CELL_SIZE, y * CELL_SIZE -4);
+            }
+        }
+    }
+
     private Color getDroneColour(String state) {
         return switch (state) {
             case "AvailableState" -> Color.BLUE;
@@ -97,4 +137,6 @@ public class DroneMapView extends JPanel {
             default -> Color.BLACK;
         };
     }
+
+
 }
