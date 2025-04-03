@@ -11,7 +11,7 @@ public class GUISubsystem {
         DroneMapView mapView = new DroneMapView();
 
         // Create a JFrame to host the view
-        JFrame frame = new JFrame("Drone GUI");
+        JFrame frame = new JFrame("Firefighting Drone Swarm");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         JScrollPane scrollPane = new JScrollPane(mapView);

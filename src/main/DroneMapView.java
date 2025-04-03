@@ -20,6 +20,8 @@ public class DroneMapView extends JPanel {
     private Map<Integer, InputEvent> completedEvents = new HashMap<>();
     private Map<Integer, InputEvent> failedEvents = new HashMap<>();
 
+    private JPanel mapPanel;
+
     // Metrics labels
     private JLabel droneResponseTimeLabel;
     private JLabel fireExtinguishedTimeLabel;
@@ -34,6 +36,12 @@ public class DroneMapView extends JPanel {
         eastPanel.add(createLegendPanel());
         eastPanel.add(createMetricsPanel());
         add(eastPanel, BorderLayout.EAST);
+
+        mapPanel = createMapPanel();
+        JScrollPane scrollPane = new JScrollPane(mapPanel);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        add(scrollPane, BorderLayout.CENTER);
     }
 
     public void updateDisplay(List<DroneStatus> statuses) {
@@ -69,8 +77,8 @@ public class DroneMapView extends JPanel {
         cols = maxCol;
 
         // Update the preferred size and revalidate the component layout
-        setPreferredSize(new Dimension(cols * CELL_SIZE, rows * CELL_SIZE));
-        revalidate(); // This tells the layout manager to redo the layout based on the new size
+        mapPanel.setPreferredSize(new Dimension(cols * CELL_SIZE, rows * CELL_SIZE));
+        mapPanel.revalidate(); // This tells the layout manager to redo the layout based on the new size
         repaint(); // Redraw the component with new dimensions
     }
     private JPanel createMetricsPanel() {
@@ -161,15 +169,30 @@ public class DroneMapView extends JPanel {
         return entry;
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        drawGrid(g);
-        drawZones(g);
-        drawFires(g);
-        drawDrones(g);
-
+    private JPanel createMapPanel() {
+        JPanel panel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                drawGrid(g);
+                drawZones(g);
+                drawDrones(g);
+                drawFires(g);
+            }
+        };
+        panel.setPreferredSize(new Dimension(cols * CELL_SIZE, rows * CELL_SIZE));
+        panel.setLayout(null); // Use absolute positioning
+        return panel;
     }
+//    @Override
+//    protected void paintComponent(Graphics g) {
+//        super.paintComponent(g);
+//        drawGrid(g);
+//        drawZones(g);
+//        drawFires(g);
+//        drawDrones(g);
+//
+//    }
 
     private void drawGrid(Graphics g) {
         g.setColor(Color.LIGHT_GRAY);
