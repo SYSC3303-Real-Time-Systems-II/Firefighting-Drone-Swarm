@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.io.*;
 import java.net.*;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The controller class that listens for both drone updates (List<DroneStatus>)
@@ -47,6 +48,12 @@ public class DroneMapController {
                     }
                     else if (receivedObject instanceof InputEvent){
                         SwingUtilities.invokeLater(()-> view.displayEvent((InputEvent) receivedObject));
+                    }
+                    else if (receivedObject instanceof Map){
+                        Map<?, ?> map = (Map<?, ?>) receivedObject;
+                        if (!map.isEmpty()) {
+                            SwingUtilities.invokeLater(()->view.updateMetrics(map));
+                        }
                     }
                 } catch (IOException e) {
                     e.printStackTrace();

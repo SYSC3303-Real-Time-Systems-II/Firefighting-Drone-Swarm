@@ -230,12 +230,27 @@ public class DroneSubsystem implements Runnable {
                         statuses.add(new DroneStatus(droneName, stateName, coord.getX(), coord.getY()));
                     }
                     // Send to GUI
-                    byte[] data = serializeDroneStatusList(statuses);
-                    DatagramPacket packet = new DatagramPacket(
+                    byte[] data = serialize(statuses);
+                    DatagramPacket statusPacket = new DatagramPacket(
                             data, data.length,
                             InetAddress.getLocalHost(), 8000
                     );
-                    guisocket.send(packet);
+                    guisocket.send(statusPacket);
+
+
+                    // Gather and send metrics
+
+                    Map<String, Object> metrics = new HashMap<>();
+                    metrics.put("droneResponseTime", MetricAnalysisLogger.getDroneResponseTime());
+                    metrics.put("fireExtinguishedResponseTime", MetricAnalysisLogger.getFireExtinguishedResponseTime());
+                    metrics.put("throughput", MetricAnalysisLogger.getThroughput());
+                    metrics.put("utilizations", MetricAnalysisLogger.getDronesUtilization());
+
+                    byte[] metricsData = serialize(metrics);
+                    DatagramPacket metricsPacket = new DatagramPacket(
+                            metricsData, metricsData.length, InetAddress.getLocalHost(), 8000
+                    );
+                    guisocket.send(metricsPacket);
 
                     Thread.sleep(2000);
                 }
@@ -245,10 +260,10 @@ public class DroneSubsystem implements Runnable {
         }).start();
     }
 
-    private byte[] serializeDroneStatusList(List<DroneStatus> list) throws IOException {
+    private byte[] serialize(Object obj) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
-        oos.writeObject(list);
+        oos.writeObject(obj);
         oos.flush();
         return bos.toByteArray();
     }

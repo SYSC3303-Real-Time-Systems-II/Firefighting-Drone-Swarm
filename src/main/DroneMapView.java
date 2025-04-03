@@ -21,11 +21,20 @@ public class DroneMapView extends JPanel {
     private Map<Integer, InputEvent> failedEvents = new HashMap<>();
     private Image fireImage;
 
+    // Metrics labels
+    private JLabel droneResponseTimeLabel;
+    private JLabel fireExtinguishedTimeLabel;
+    private JLabel throughputLabel;
+    private JPanel utilizationPanel;
+
     public DroneMapView() {
         setBackground(Color.WHITE);
         setLayout(new BorderLayout());
-        createMetricsPanel();
-        createLegendPanel();
+        JPanel eastPanel = new JPanel();
+        eastPanel.setLayout(new BoxLayout(eastPanel, BoxLayout.Y_AXIS));
+        eastPanel.add(createLegendPanel());
+        eastPanel.add(createMetricsPanel());
+        add(eastPanel, BorderLayout.EAST);
     }
 
     public void updateDisplay(List<DroneStatus> statuses) {
@@ -65,17 +74,54 @@ public class DroneMapView extends JPanel {
         revalidate(); // This tells the layout manager to redo the layout based on the new size
         repaint(); // Redraw the component with new dimensions
     }
-    private void createMetricsPanel() {
+    private JPanel createMetricsPanel() {
         JPanel metricsPanel = new JPanel();
         metricsPanel.setLayout(new BoxLayout(metricsPanel, BoxLayout.Y_AXIS));
         metricsPanel.setBorder(BorderFactory.createTitledBorder("Metrics"));
-        metricsPanel.setPreferredSize(new Dimension(150, 150));
-        metricsPanel.add(Box.createVerticalStrut(5));
-        metricsPanel.add(new JLabel("Response Time: "));
-        this.add(metricsPanel, BorderLayout.SOUTH);
+
+        droneResponseTimeLabel = new JLabel("Drones Average Response Time: N/A");
+        fireExtinguishedTimeLabel = new JLabel("Fire Extinguished Response Time: N/A");
+        throughputLabel = new JLabel("Throughput (Fires Extinguished/Min): N/A");
+        JLabel utilizationLabel = new JLabel("Drone Utilization:");
+        utilizationLabel.setBorder(BorderFactory.createEmptyBorder(5, 0, 0, 0));
+
+        metricsPanel.add(droneResponseTimeLabel);
+        metricsPanel.add(fireExtinguishedTimeLabel);
+        metricsPanel.add(throughputLabel);
+
+        utilizationPanel = new JPanel();
+        utilizationPanel.setLayout(new BoxLayout(utilizationPanel, BoxLayout.Y_AXIS));
+        utilizationPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
+        JScrollPane scrollPane = new JScrollPane(utilizationPanel);
+        scrollPane.setBorder(null);
+        metricsPanel.add(utilizationLabel);
+        metricsPanel.add(scrollPane);
+
+        return metricsPanel;
     }
 
-    private void createLegendPanel() {
+    public void updateMetrics(Map<?, ?> metrics) {
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("Drone responseTime: " + metrics.get("droneResponseTime"));
+            droneResponseTimeLabel.setText("Drones Average Response Time: " + round2Decimals((double) metrics.get("droneResponseTime")) + " ms");
+            fireExtinguishedTimeLabel.setText("Fire Extinguished Response Time: " + round2Decimals((double) metrics.get("fireExtinguishedResponseTime")) + " s");
+            throughputLabel.setText("Throughput (Fires Extinguished/Min): " + round2Decimals((double) metrics.get("throughput")));
+
+            utilizationPanel.removeAll();
+            Map<String, Double> utilizations = (Map<String, Double>) metrics.get("utilizations");
+            utilizations.forEach((name, utilization) -> {
+                JLabel label = new JLabel(name + ": " + round2Decimals(utilization)+"%");
+                utilizationPanel.add(label);
+            });
+            utilizationPanel.revalidate();
+            utilizationPanel.repaint();
+        });
+    }
+
+    private String round2Decimals(double decimals) {
+        return String.format("%.2f", decimals);
+    }
+    private JPanel createLegendPanel() {
         JPanel legendPanel = new JPanel();
         legendPanel.setLayout(new BoxLayout(legendPanel, BoxLayout.Y_AXIS));
         legendPanel.setBorder(BorderFactory.createTitledBorder("Legend"));
@@ -89,8 +135,9 @@ public class DroneMapView extends JPanel {
         legendPanel.add(createLegendEntry(Color.CYAN, "Cruising"));
         legendPanel.add(createLegendEntry(Color.GREEN, "Dropping Agent"));
         legendPanel.add(createLegendEntry(Color.MAGENTA, "Returning to Base"));
+
         legendPanel.add(createLegendEntry(Color.BLACK, "Other States"));
-        this.add(legendPanel, BorderLayout.EAST);
+        return legendPanel;
 
     }
 
