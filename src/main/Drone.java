@@ -281,9 +281,11 @@ public class Drone implements Runnable{
                 try {
                     if (this.getDroneState() instanceof StuckState || this.getDroneState() instanceof JammedState) { // If the drone was stuck or the nozzle is broken makes the drone unavailable
                         System.out.println("[" + this.name + "] NOW OFFLINE."); // Makes the drone offline
+                        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.OFFLINE, this.currentEvent, this.name);
                     }
                     else {
                         System.out.println("[" + this.name + "] WAITING FOR EVENT."); // Else prints that the drone is waiting for an event
+                        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.WAITING_FOR_TASK, this.currentEvent, this.name);
                     }
                     wait(); // Waits
                 } catch (InterruptedException e) {
@@ -292,6 +294,7 @@ public class Drone implements Runnable{
             }
             setCurrentEvent(this.assignedEvent); // Move the assignedEvent to Current Event
             setAssignedEvent(null); // Makes the assigned event null now
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.ASSIGNED_EVENT, this.currentEvent, this.name);
         }
     }
 
