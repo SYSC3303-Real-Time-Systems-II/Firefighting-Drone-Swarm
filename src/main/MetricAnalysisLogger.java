@@ -94,14 +94,14 @@ class MetricAnalysisLogger {
     private static double totalDroneResponseTime = 0;
 
     /** Number of fires extinguished */
-    private static int amountOfFireExstinguished = 0;
+    private static int amountOfFireExtinguished = 0;
     /** Total time to extinguish all fires in seconds */
-    private static double totalFireExstinguishedResponseTime = 0;
+    private static double totalFireExtinguishedResponseTime = 0;
 
     /** Average drone response time in milliseconds */
     public static double droneResponseTime;
     /** Average fire extinguishing response time in seconds */
-    public static double fireExstinguishedResponseTime;
+    public static double fireExtinguishedResponseTime;
     /** System throughput (fires extinguished per minute) */
     public static double throughput;
 
@@ -143,7 +143,7 @@ class MetricAnalysisLogger {
             }
             case FIRE_EXTINGUISHED -> {
                 System.out.println("Fire extinguished: " + Duration.between(startingTime, currentTime));
-                fireExstinguishedResponseTime(currentEvent.getEventID(), currentTime);
+                fireExtinguishedResponseTime(currentEvent.getEventID(), currentTime);
                 calculateThroughPut();
             }
         }
@@ -204,17 +204,17 @@ class MetricAnalysisLogger {
      * @param eventID The ID of the event
      * @param endTime The time when the fire was extinguished
      */
-    private static void fireExstinguishedResponseTime(int eventID, LocalTime endTime) {
+    private static void fireExtinguishedResponseTime(int eventID, LocalTime endTime) {
         LocalTime responseTime = eventsInProgress.get(eventID);
 
         if (responseTime == null)
             return;
 
-        amountOfFireExstinguished += 1;
+        amountOfFireExtinguished += 1;
 
         double duration = Duration.between(responseTime, endTime).toSeconds();
-        totalFireExstinguishedResponseTime += duration;
-        fireExstinguishedResponseTime = totalFireExstinguishedResponseTime / amountOfFireExstinguished;
+        totalFireExtinguishedResponseTime += duration;
+        fireExtinguishedResponseTime = totalFireExtinguishedResponseTime / amountOfFireExtinguished;
 
         eventsInProgress.remove(eventID);
     }
@@ -223,7 +223,7 @@ class MetricAnalysisLogger {
      * Calculates the system throughput (fires extinguished per minute).
      */
     private static void calculateThroughPut() {
-        throughput = amountOfFireExstinguished / (totalTime / 60000.0); // Convert ms to minutes
+        throughput = amountOfFireExtinguished / (totalTime / 60000.0); // Convert ms to minutes
     }
 
     /**
@@ -273,8 +273,8 @@ class MetricAnalysisLogger {
      *
      * @return The average fire extinguishing response time
      */
-    public static double getFireExstinguishedResponseTime() {
-        return fireExstinguishedResponseTime;
+    public static double getFireExtinguishedResponseTime() {
+        return fireExtinguishedResponseTime;
     }
 
     /**
