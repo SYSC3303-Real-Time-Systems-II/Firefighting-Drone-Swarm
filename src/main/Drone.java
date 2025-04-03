@@ -53,6 +53,13 @@ public class Drone implements Runnable{
         return currentCoordinates;
     }
 
+    /**
+     * Gets the state of the drone.
+     * @return the state of drone.
+     */
+    public DroneStateMachine getDroneState() {
+        return droneState;
+    }
 
     /**
      * Gets the name of the drone.
@@ -148,15 +155,6 @@ public class Drone implements Runnable{
     }
 
     /**
-     * Gets the drone state of the drone.
-     * @return the drone state.
-     */
-    public DroneStateMachine getDroneState() {
-        return droneState;
-    }
-
-
-    /**
      * Gets the current assigned event of the drone.
      * @return the current assigned event of the drone.
      */
@@ -180,6 +178,9 @@ public class Drone implements Runnable{
         return currentEvent;
     }
 
+    public void setCurrentCoordinates(Coordinate coord) {
+        this.currentCoordinates = coord;
+    }
     /**
      * A method use to simulate battery drain in the span of seconds given for the drone.
      * @param seconds the time in seconds.
@@ -187,7 +188,7 @@ public class Drone implements Runnable{
     public void drainBattery(double seconds) {
         double drainAmount = seconds * BATTERY_DRAIN_RATE;
         batteryLevel = Math.max(0, batteryLevel - drainAmount);
-        System.out.println(getName() + ": Remaining battery " + String.format("%.2f", batteryLevel) + "%");
+        //System.out.println(getName() + ": Remaining battery " + String.format("%.2f", batteryLevel)+"%") ;
     }
 
     /**
@@ -211,6 +212,10 @@ public class Drone implements Runnable{
     public double calculateZoneTravelTime(InputEvent event){
         Coordinate fireCoordinates = event.getZone().getZoneCenter();
         return Math.sqrt(Math.pow(fireCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(fireCoordinates.getY() - currentCoordinates.getY(), 2)) / TOP_SPEED;
+    }
+
+    public double calculateHomeZoneTime(Coordinate coordinate){
+        return (Math.sqrt(Math.pow(currentCoordinates.getX() - coordinate.getX(), 2) + Math.pow(currentCoordinates.getY() - coordinate.getY(), 2)) / TOP_SPEED) * 2;
     }
 
     /**
@@ -278,9 +283,11 @@ public class Drone implements Runnable{
                 try {
                     if (this.getDroneState() instanceof StuckState || this.getDroneState() instanceof JammedState) { // If the drone was stuck or the nozzle is broken makes the drone unavailable
                         System.out.println("[" + this.name + "] NOW OFFLINE."); // Makes the drone offline
+                        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.OFFLINE, this.currentEvent, this.name);
                     }
                     else {
                         System.out.println("[" + this.name + "] WAITING FOR EVENT."); // Else prints that the drone is waiting for an event
+                        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.WAITING_FOR_TASK, this.currentEvent, this.name);
                     }
                     wait(); // Waits
                 } catch (InterruptedException e) {
@@ -289,6 +296,7 @@ public class Drone implements Runnable{
             }
             setCurrentEvent(this.assignedEvent); // Move the assignedEvent to Current Event
             setAssignedEvent(null); // Makes the assigned event null now
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.ASSIGNED_EVENT, this.currentEvent, this.name);
         }
     }
 
@@ -316,12 +324,6 @@ public class Drone implements Runnable{
 
         currentCoordinates = new Coordinate(newX, newY);
     }
-
-    // Add this setter for coordinates
-    public synchronized void setCurrentCoordinates(Coordinate coords) {
-        this.currentCoordinates = coords;
-    }
-
 
     @Override
     public void run() {

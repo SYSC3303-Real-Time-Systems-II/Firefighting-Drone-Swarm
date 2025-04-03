@@ -63,6 +63,7 @@ class AscendingState extends InBaseState {
         context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime)); // Adds the local time
         context.sleepFor(context.ACCELERATION_TIME);
         System.out.println("["+context.getName() + "] ASCENDING AT TIME: " + context.getLocalTime());
+        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.ASCENDING, context.getCurrentEvent(), context.getName());
 
         // Handle if the drone has a fault or not
         if (context.getCurrentEvent().getFaultType() == FaultType.STUCK) { //
@@ -150,7 +151,6 @@ class CruisingState extends InFieldState {
     public void handle(Drone context) {
         double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
         int currentTime = 0;
-        System.out.println("********** out  "+ travelZoneTime);
 
         while (currentTime < travelZoneTime) {
             // Check for task switch every iteration
@@ -193,14 +193,14 @@ class DropAgentState extends InFieldState {
         double currentCapacity = context.getWaterLevel();
         if (currentCapacity >= waterNeeded) {
             System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.FIRE_EXTINGUISHED, context.getCurrentEvent(), context.getName());
             context.setWaterLevel(currentCapacity - waterNeeded);
             context.sleepFor(context.DROP_WATER_TIME);
             context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
             context.drainBattery(context.DROP_WATER_TIME);
         }
         else {
-            System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity ("
-                    + context.getCurrentEvent().getSeverity() + ")!");
+            System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity (" + context.getCurrentEvent().getSeverity() + ")!");
             context.setLocalTime(context.getLocalTime().plusNanos((long) (context.DECELERATION_TIME * 1000000000))); // Adds the local time
         }
         System.out.println("["+context.getName() + "]: RETURNING TO BASE: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the watter was dropped and that it's returning to base
@@ -262,12 +262,12 @@ class RefillState extends InFieldState {
      */
     @Override
     public void handle(Drone context) {
-        System.out.println(context.getName() + ": REFILLING WATER...");
+        System.out.println("["+context.getName() + "] REFILLING WATER...");
         context.sleepFor(2); // 2 second refill delay
         context.setLocalTime(context.getLocalTime().plusSeconds(2));
         // Refill water capacity
         context.refillWater();
-        System.out.println(context.getName() + ": WATER REFILLED. AVAILABLE AT TIME: " + context.getLocalTime());
+        System.out.println("["+context.getName() + "] WATER REFILLED. AVAILABLE AT TIME: " + context.getLocalTime());
         if (context.getBatteryLevel() < context.MAX_BATTERY_CAPACITY * 0.8){
             context.setDroneState(new BatteryRechargingState());
         }

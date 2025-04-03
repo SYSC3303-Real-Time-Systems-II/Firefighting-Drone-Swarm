@@ -9,6 +9,7 @@ public class DroneSubsystem implements Runnable {
     private final String name;
     private final DatagramSocket socket;
     private DroneSubsystemState currentState = DroneSubsystemState.WAITING;
+
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
     private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
@@ -18,6 +19,8 @@ public class DroneSubsystem implements Runnable {
     private DroneModel droneModel;
 
     public DroneSubsystem(String name, int numDrones) {
+        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.STARTING, null, null);
+
         this.name = name;
         // Initialize drone fleet
         for(int i = 0; i < numDrones; i++) {
@@ -61,6 +64,7 @@ public class DroneSubsystem implements Runnable {
         return workingDrones;
     }
 
+
     @Override
     public void run() {
         System.out.println("["+this.name + "] SUBSYSTEM STARTED WITH " + drones.size() + " DRONES.");
@@ -91,8 +95,9 @@ public class DroneSubsystem implements Runnable {
 
             InputEvent event = deserializeEvent(packet.getData()); // Deserializes the data
             System.out.println("["+this.name + "] RECEIVED EVENT --> " + "INPUT_EVENT_" + event.getEventID() + " (" +  event + ")" + " FROM: " + "SCHEDULER"); // Prints a message that it has received the data
-            currentEvent = event; // Saves the current event
-            currentState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER; // Sets the next state
+            currentEvent = event;
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.RECEIVED_EVENT, this.currentEvent, null);
+            currentState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER;
 
         }catch (SocketTimeoutException e) {
             currentState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER;
@@ -249,8 +254,12 @@ public class DroneSubsystem implements Runnable {
     }
 
     public static void main(String[] args) {
-        DroneSubsystem subsystem = new DroneSubsystem("DS", 3);
-        new Thread(subsystem).start();
-        subsystem.startGUIUpdates();
+        try {
+            DroneSubsystem subsystem = new DroneSubsystem("DS", 10);
+            new Thread(subsystem).start();
+            subsystem.startGUIUpdates();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
