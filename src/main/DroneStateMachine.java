@@ -195,7 +195,7 @@ class DropAgentState extends InFieldState {
         double currentCapacity = context.getWaterLevel();
         if (currentCapacity >= waterNeeded) {
             System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
-            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.FIRE_EXSTINGUISHED, context.getCurrentEvent(), context.getName());
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.FIRE_EXTINGUISHED, context.getCurrentEvent(), context.getName());
             context.setWaterLevel(currentCapacity - waterNeeded);
             context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
             context.drainBattery(context.DROP_WATER_TIME);

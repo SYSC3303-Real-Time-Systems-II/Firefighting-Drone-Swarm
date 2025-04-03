@@ -24,7 +24,7 @@ class MetricAnalysisLogger {
         /** Event has been assigned to a drone */
         ASSIGNED_EVENT,
         /** Fire has been extinguished */
-        FIRE_EXSTINGUISHED,
+        FIRE_EXTINGUISHED,
         /** Drone is offline */
         OFFLINE
     }
@@ -103,7 +103,7 @@ class MetricAnalysisLogger {
     /** Average fire extinguishing response time in seconds */
     public static double fireExstinguishedResponseTime;
     /** System throughput (fires extinguished per minute) */
-    public static double throughPut;
+    public static double throughput;
 
     /** Maps drone names to their event assignment times */
     private static final Map<String, LocalTime> droneAssignedEvents = new HashMap<>();
@@ -141,7 +141,7 @@ class MetricAnalysisLogger {
                 calculateUtilization(droneName, currentTime);
                 droneAssignedEvents.put(droneName, currentTime);
             }
-            case FIRE_EXSTINGUISHED -> {
+            case FIRE_EXTINGUISHED -> {
                 System.out.println("Fire extinguished: " + Duration.between(startingTime, currentTime));
                 fireExstinguishedResponseTime(currentEvent.getEventID(), currentTime);
                 calculateThroughPut();
@@ -223,7 +223,7 @@ class MetricAnalysisLogger {
      * Calculates the system throughput (fires extinguished per minute).
      */
     private static void calculateThroughPut() {
-        throughPut = amountOfFireExstinguished / (totalTime / 60000.0); // Convert ms to minutes
+        throughput = amountOfFireExstinguished / (totalTime / 60000.0); // Convert ms to minutes
     }
 
     /**
@@ -282,8 +282,8 @@ class MetricAnalysisLogger {
      *
      * @return The system throughput
      */
-    public static double getThroughPut() {
-        return throughPut;
+    public static double getThroughput() {
+        return throughput;
     }
 
     /**
