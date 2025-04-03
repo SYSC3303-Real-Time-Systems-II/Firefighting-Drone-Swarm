@@ -19,7 +19,6 @@ public class DroneMapView extends JPanel {
     private Map<Integer, InputEvent> fireEvents = new HashMap<>(); // Store fire events by zone ID for quick access
     private Map<Integer, InputEvent> completedEvents = new HashMap<>();
     private Map<Integer, InputEvent> failedEvents = new HashMap<>();
-    private Image fireImage;
 
     // Metrics labels
     private JLabel droneResponseTimeLabel;
@@ -135,8 +134,8 @@ public class DroneMapView extends JPanel {
         legendPanel.add(createLegendEntry(Color.CYAN, "Cruising"));
         legendPanel.add(createLegendEntry(Color.GREEN, "Dropping Agent"));
         legendPanel.add(createLegendEntry(Color.MAGENTA, "Returning to Base"));
-
-        legendPanel.add(createLegendEntry(Color.BLACK, "Other States"));
+        legendPanel.add(createLegendEntry(Color.RED, "Recharging Battery"));
+        legendPanel.add(createLegendEntry(Color.YELLOW, "Refilling Agent Tank"));
         return legendPanel;
 
     }
@@ -154,7 +153,6 @@ public class DroneMapView extends JPanel {
         colorLabel.setBackground(color);
 
         JLabel textLabel = new JLabel(" " + text);
-        textLabel.setFont(new Font("Arial", Font.PLAIN, 12));
 
         entry.add(colorLabel);
         entry.add(Box.createHorizontalStrut(5)); // Small space between color box and text
@@ -190,10 +188,11 @@ public class DroneMapView extends JPanel {
             int xEnd = (int) (zone.getZoneEnd().getX() / CELL_SIZE) * CELL_SIZE;
             int yEnd = (int) (zone.getZoneEnd().getY() / CELL_SIZE) * CELL_SIZE;
             g.drawRect(xStart, yStart, xEnd - xStart, yEnd - yStart);
-            g.drawString("Zone " + zone.getZoneID(), xStart + 20, yStart + 20);
+            g.drawString("Zone " + zone.getZoneID(), xStart + 30, yStart + 20);
         }
     }
     private void drawDrones(Graphics g) {
+        Image droneImage = loadImage("drone.png");
         if (droneStatuses != null) {
             for (DroneStatus status : droneStatuses) {
                 System.out.println(status.getDroneName()+" "+status.getX()+","+status.getY());
@@ -201,7 +200,8 @@ public class DroneMapView extends JPanel {
                 int cellY = (int) (status.getY() / CELL_SIZE);
                 Color color = getDroneColour(status.getState());
                 g.setColor(color);
-                g.fillOval(cellX * CELL_SIZE + 4, cellY * CELL_SIZE + 4, CELL_SIZE - 8, CELL_SIZE - 8);
+                g.fillOval(cellX * CELL_SIZE + 2, cellY * CELL_SIZE + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+                g.drawImage(droneImage, cellX * CELL_SIZE + 3, cellY * CELL_SIZE + 3, CELL_SIZE - 6, CELL_SIZE - 6, this);
                 g.setColor(Color.BLACK);
                 g.drawString(status.getDroneName(), cellX * CELL_SIZE, cellY * CELL_SIZE);
             }
@@ -209,7 +209,7 @@ public class DroneMapView extends JPanel {
     }
 
     private void drawFires(Graphics g) {
-        loadFireImage();
+        Image fireImage = loadImage("fire.png");
         if (fireEvents != null) {
             System.out.println("Fire events count: " + fireEvents.size());
             System.out.println("fireevents not null");
@@ -235,16 +235,19 @@ public class DroneMapView extends JPanel {
             case "CruisingState" -> Color.CYAN;
             case "DropAgentState" -> Color.GREEN;
             case "ReturningToBaseState" -> Color.MAGENTA;
-            default -> Color.BLACK;
+            case "BatteryRechargingState" -> Color.RED;
+            case "RefillState" -> Color.YELLOW;
+            default -> new Color(255, 255, 255, 0);
         };
     }
 
-    public void loadFireImage() {
+    public Image loadImage(String fileName) {
         try {
-            URL imageUrl = getClass().getResource("/fire.png");
-            fireImage = new ImageIcon(imageUrl).getImage();
+            URL imageUrl = getClass().getResource("/"+fileName);
+            return new ImageIcon(imageUrl).getImage();
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error loading image: " + e.getMessage());
+            return null;
         }
     }
 
