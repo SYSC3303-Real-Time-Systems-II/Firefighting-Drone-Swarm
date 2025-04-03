@@ -217,7 +217,7 @@ public class DroneSubsystem implements Runnable {
 
     public static void main(String[] args) {
         try {
-            DroneSubsystem subsystem = new DroneSubsystem("DS", 3);
+            DroneSubsystem subsystem = new DroneSubsystem("DS", 10);
             new Thread(subsystem).start();
         } catch (Exception e) {
             e.printStackTrace();
