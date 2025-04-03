@@ -20,7 +20,6 @@ public class DroneMapView extends JPanel {
     private Map<Integer, InputEvent> fireEvents = new HashMap<>(); // Store fire events by zone ID for quick access
     private Map<Integer, InputEvent> completedEvents = new HashMap<>();
     private Map<Integer, InputEvent> failedEvents = new HashMap<>();
-
     private JPanel mapPanel;
 
     // Metrics labels
@@ -62,12 +61,11 @@ public class DroneMapView extends JPanel {
             fireEvents.remove(event.getZoneId());
             System.out.println("new fire events size: "+fireEvents.size());
         }
-        else if (event.getStatus() == Status.UNRESOLVED) {
+        if (event.getStatus() == Status.UNRESOLVED) {
             fireEvents.put(event.getZoneId(), event);
-            System.out.println("event unresolved...");
         }
 
-        else if (event.getFaultType() != null) {
+        if (event.getFaultType() != null) {
             failedEvents.put(event.getZoneId(), event);
             System.out.println("event failed...");
         }
@@ -77,7 +75,6 @@ public class DroneMapView extends JPanel {
     private void updateGridSize() {
         int maxRow = 0, maxCol = 0;
         for (Zone zone : zones) {
-            System.out.println(zone.getZoneID() + " + "+zone.getZoneStart()+ "+"+ zone.getZoneEnd());
             maxRow = Math.max(maxRow, (int) (zone.getZoneEnd().getY() / CELL_SIZE));
             maxCol = Math.max(maxCol, (int) (zone.getZoneEnd().getX() / CELL_SIZE));
         }
@@ -119,7 +116,6 @@ public class DroneMapView extends JPanel {
 
     public void updateMetrics(Map<?, ?> metrics) {
         SwingUtilities.invokeLater(() -> {
-            System.out.println("Drone responseTime: " + metrics.get("droneResponseTime"));
             droneResponseTimeLabel.setText("Drones Average Response Time: " + round2Decimals((double) metrics.get("droneResponseTime")) + " ms");
             fireExtinguishedTimeLabel.setText("Fire Extinguished Response Time: " + round2Decimals((double) metrics.get("fireExtinguishedResponseTime")) + " s");
             throughputLabel.setText("Throughput (Fires Extinguished/Min): " + round2Decimals((double) metrics.get("throughput")));
@@ -228,7 +224,6 @@ public class DroneMapView extends JPanel {
         Image droneImage = loadImage("drone.png");
         if (droneStatuses != null) {
             for (DroneStatus status : droneStatuses) {
-                System.out.println(status.getDroneName()+" "+status.getX()+","+status.getY());
                 int cellX = (int) (status.getX() / CELL_SIZE);
                 int cellY = (int) (status.getY() / CELL_SIZE);
                 Color color = getDroneColour(status.getState());
@@ -243,13 +238,12 @@ public class DroneMapView extends JPanel {
 
     private void drawFires(Graphics g) {
         Image fireImage = loadImage("fire.png");
-        if (fireEvents != null) {
+        if (!fireEvents.isEmpty()) {
             System.out.println("Fire events count: " + fireEvents.size());
             System.out.println("fireevents not null");
             for (InputEvent fireEvent : fireEvents.values()) {
                 Zone zone = fireEvent.getZone();
                 Coordinate fireCoords = zone.getZoneCenter();
-                System.out.println("fire coords: " + fireCoords);
                 int x = (int) fireCoords.getX() / CELL_SIZE;
                 int y = (int) fireCoords.getY() / CELL_SIZE;
                 //g.setColor(Color.RED);

@@ -198,6 +198,7 @@ class DropAgentState extends InFieldState {
             context.sleepFor(context.DROP_WATER_TIME);
             context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
             context.drainBattery(context.DROP_WATER_TIME);
+            context.setDropCompleted(true);
         }
         else {
             System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity (" + context.getCurrentEvent().getSeverity() + ")!");

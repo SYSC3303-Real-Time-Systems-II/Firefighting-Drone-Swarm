@@ -122,39 +122,51 @@ public class DroneSubsystem implements Runnable {
 
     public void handleSendingConfirmationState() {
         try {
-            Thread.sleep(3000);
+            Thread.sleep(3000);  // Wait a bit longer to allow the drop to finish.
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
-        // Use entrySet iterator for safe removal
+        // Iterate safely over the working drones.
         Iterator<Map.Entry<Integer, Drone>> iterator = workingDrones.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<Integer, Drone> entry = iterator.next();
             Drone workingDrone = entry.getValue();
 
-            if (workingDrone != null) {
-                InputEvent receivedEvent;
-                if (workingDrone.getDroneState() instanceof StuckState || workingDrone.getDroneState() instanceof JammedState || workingDrone.getDroneState() instanceof CorruptState) {
-                    receivedEvent = workingDrone.getHandledEvent(); // Gets the event of the drone
-                }
-                else {
-                    receivedEvent = workingDrone.getCurrentEvent(); // Gets the event of the drone
-                }
-                if (receivedEvent != null ) { // If the event is not null
-                    if (receivedEvent.getFaultType() == null) { // If the event went through successfully and there were no faults
-                        System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
-                    }
-                    else { // There was a fault in the event, and it needs to be sent to the scheduler to be scheduler to be rescheduled
-                        System.out.println("[" + this.name + "] " + workingDrone.getName() + ": FAILED TO COMPLETE INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
-                    }
-                }
-                if (!(workingDrone.getDroneState() instanceof StuckState || workingDrone.getDroneState() instanceof JammedState)){ // Do not add the drone back to the available drones if its stuck or nozzle is jammed
-                    availableDrones.add(workingDrone); // Adds back to the list of available drones list
-                }
-                sendConfirmation(receivedEvent); // Sends the event back to the scheduler
-                iterator.remove(); // Safe removal using iterator
+            // Only process the drone if either:
+            // 1) It’s in a fault state, OR
+            // 2) Its water drop has completed (dropCompleted is true).
+            if (!(workingDrone.isDropCompleted() ||
+                    workingDrone.getDroneState() instanceof StuckState ||
+                    workingDrone.getDroneState() instanceof JammedState ||
+                    workingDrone.getDroneState() instanceof CorruptState)) {
+                continue;  // Skip this drone for now
             }
+
+            InputEvent receivedEvent;
+            if (workingDrone.getDroneState() instanceof StuckState ||
+                    workingDrone.getDroneState() instanceof JammedState ||
+                    workingDrone.getDroneState() instanceof CorruptState) {
+                receivedEvent = workingDrone.getHandledEvent(); // Gets the event in fault cases.
+            } else {
+                receivedEvent = workingDrone.getCurrentEvent();
+            }
+            if (receivedEvent != null) {
+                if (receivedEvent.getFaultType() == null) {
+                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED INPUT_EVENT_" +
+                            receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+                } else {
+                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": FAILED TO COMPLETE INPUT_EVENT_" +
+                            receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+                }
+            }
+            // Add the drone back to available pool if it is not in a fault state.
+            if (!(workingDrone.getDroneState() instanceof StuckState ||
+                    workingDrone.getDroneState() instanceof JammedState)) {
+                availableDrones.add(workingDrone); // Adds back to the list of available drones list
+            }
+            sendConfirmation(receivedEvent); // Sends the event back to the scheduler
+            iterator.remove();  // Safe removal using iterato
         }
         currentState = DroneSubsystemState.WAITING;
     }

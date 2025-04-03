@@ -22,7 +22,7 @@ public class Drone implements Runnable{
     private LocalTime localTime; // Will have the local time start of the event
     private double waterLevel = MAX_WATER_CAPACITY;
     private double batteryLevel = MAX_BATTERY_CAPACITY;
-
+    private boolean dropCompleted = false;
 
     private boolean changedEvent;
     private DroneStateMachine droneState; // This will be used for the drones state
@@ -324,6 +324,15 @@ public class Drone implements Runnable{
 
         currentCoordinates = new Coordinate(newX, newY);
     }
+
+    public boolean isDropCompleted() {
+        return dropCompleted;
+    }
+
+    public void setDropCompleted(boolean dropCompleted) {
+        this.dropCompleted = dropCompleted;
+    }
+
 
     @Override
     public void run() {

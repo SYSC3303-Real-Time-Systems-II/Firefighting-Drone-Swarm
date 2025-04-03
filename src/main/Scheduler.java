@@ -164,6 +164,7 @@ public class Scheduler implements Runnable {
                 // Process the event and add it to the inputEvents queue
                 receivedPackage.getEvent().setZone(zones.get(receivedPackage.getEvent().getZoneId())); // Set the zone for the event
                 this.inputEvents.add(receivedPackage.getEvent()); // Adds the input events to the list of input events for the drone subsystem
+                receivedPackage.getEvent().setStatus(Status.UNRESOLVED);
                 sendEventToGUI(receivedPackage.getEvent());
             }
             return true;
@@ -224,10 +225,12 @@ public class Scheduler implements Runnable {
             if(receivedInput.getFaultType() != null){
                 System.out.println("["+this.name + "] RECEIVED FAULT CONFIRMATION <-- " + "INPUT_EVENT_" + receivedInput.getEventID() + " (" + receivedInput + ")" + " FROM: DroneSubsystem");
                 sendingPackage.setRelayPackageID("FAULT_CONFIRMATION");
+                sendingPackage.getEvent().setStatus(Status.UNRESOLVED);
             }
             else {
                 System.out.println("["+this.name + "] RECEIVED COMPLETED CONFIRMATION <-- " + "INPUT_EVENT_" + receivedInput.getEventID()  + " (" + receivedInput + ")" + " FROM: DroneSubsystem");
                 sendingPackage.setRelayPackageID("DRONE_CONFIRMATION");
+                sendingPackage.getEvent().setStatus(Status.COMPLETE);
             }
 
             // Create a confirmation package and place in confirmationPackages queue
