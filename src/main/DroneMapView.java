@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.net.URL;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,12 +57,19 @@ public class DroneMapView extends JPanel {
 
     public void displayEvent(InputEvent event) {
         if (event.getStatus() == Status.COMPLETE) {
-            completedEvents.put(event.getZoneId(), event);
+            //completedEvents.put(event.getZoneId(), event);
+            System.out.println("event completed...");
+            fireEvents.remove(event.getZoneId());
+            System.out.println("new fire events size: "+fireEvents.size());
         }
-        if (event.getStatus() == Status.UNRESOLVED) fireEvents.put(event.getZoneId(), event);
+        else if (event.getStatus() == Status.UNRESOLVED) {
+            fireEvents.put(event.getZoneId(), event);
+            System.out.println("event unresolved...");
+        }
 
         else if (event.getFaultType() != null) {
             failedEvents.put(event.getZoneId(), event);
+            System.out.println("event failed...");
         }
         repaint();
     }
@@ -85,6 +93,8 @@ public class DroneMapView extends JPanel {
         JPanel metricsPanel = new JPanel();
         metricsPanel.setLayout(new BoxLayout(metricsPanel, BoxLayout.Y_AXIS));
         metricsPanel.setBorder(BorderFactory.createTitledBorder("Metrics"));
+        metricsPanel.setPreferredSize(new Dimension(250, rows * CELL_SIZE));
+
 
         droneResponseTimeLabel = new JLabel("Drones Average Response Time: N/A");
         fireExtinguishedTimeLabel = new JLabel("Fire Extinguished Response Time: N/A");
@@ -132,7 +142,7 @@ public class DroneMapView extends JPanel {
         JPanel legendPanel = new JPanel();
         legendPanel.setLayout(new BoxLayout(legendPanel, BoxLayout.Y_AXIS));
         legendPanel.setBorder(BorderFactory.createTitledBorder("Legend"));
-        legendPanel.setPreferredSize(new Dimension(150, 150));
+        //legendPanel.setPreferredSize(new Dimension(150, 150));
 
         // Adjust the vertical spacing between legend entries
         legendPanel.add(Box.createVerticalStrut(5)); // Small vertical space at the top
@@ -176,8 +186,8 @@ public class DroneMapView extends JPanel {
                 super.paintComponent(g);
                 drawGrid(g);
                 drawZones(g);
-                drawDrones(g);
                 drawFires(g);
+                drawDrones(g);
             }
         };
         panel.setPreferredSize(new Dimension(cols * CELL_SIZE, rows * CELL_SIZE));
@@ -250,6 +260,7 @@ public class DroneMapView extends JPanel {
             }
         }
     }
+
 
     private Color getDroneColour(String state) {
         return switch (state) {
