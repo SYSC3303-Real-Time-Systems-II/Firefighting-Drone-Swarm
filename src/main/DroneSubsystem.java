@@ -137,6 +137,7 @@ public class DroneSubsystem implements Runnable {
 
         // Iterate safely over the working drones.
         Iterator<Map.Entry<Integer, Drone>> iterator = workingDrones.entrySet().iterator();
+        System.out.println("POST --- " + workingDrones);
         while (iterator.hasNext()) {
             Map.Entry<Integer, Drone> entry = iterator.next();
             Drone workingDrone = entry.getValue();
@@ -161,27 +162,33 @@ public class DroneSubsystem implements Runnable {
             }
             if (receivedEvent != null ) {
                 if (receivedEvent.getFaultType() == null) {
-                    if (receivedEvent.getRemainingAgentNeeded() <=0) {
+                    if (receivedEvent.getRemainingAgentNeeded() <= 0) {
                         System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
                         inProcessEvents.remove(receivedEvent);
-                    } else if(receivedEvent.getRemainingAgentNeeded() > 0){
-                        System.out.println("["+name+"] REQUEUED EVENT "+receivedEvent.getEventID() +" ("+receivedEvent.getRemainingAgentNeeded()+"L remaining)");
+                    } else if (receivedEvent.getRemainingAgentNeeded() > 0 ) {
+                        System.out.println("[" + name + "] REQUEUED EVENT " + receivedEvent.getEventID() + " (" + receivedEvent.getRemainingAgentNeeded() + "L remaining)");
                         inProcessEvents.remove(receivedEvent);
                         pendingEvents.add(receivedEvent);
-                        availableDrones.add(workingDrone);
-                        iterator.remove();
-                        continue;
+
+                        // availableDrones.add(workingDrone);
+                        //iterator.remove();
+                        // continue;
                     }
                 } else {
                     System.out.println("[" + this.name + "] " + workingDrone.getName() + ": FAILED TO COMPLETE INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+                    //inProcessEvents.remove(receivedEvent);
+                    pendingEvents.remove(receivedEvent);
+                }
+
+                // Add the drone back to available pool if it is not in a fault state.
+                if (!(workingDrone.getDroneState() instanceof StuckState ||
+                        workingDrone.getDroneState() instanceof JammedState)) {
+                    availableDrones.add(workingDrone); // Adds back to the list of available drones list
+                }
+                if (receivedEvent.getRemainingAgentNeeded() <= 0 || receivedEvent.getFaultType() != null) {
+                    sendConfirmation(receivedEvent); // Sends the event back to the scheduler
                 }
             }
-            // Add the drone back to available pool if it is not in a fault state.
-            if (!(workingDrone.getDroneState() instanceof StuckState ||
-                    workingDrone.getDroneState() instanceof JammedState)) {
-                availableDrones.add(workingDrone); // Adds back to the list of available drones list
-            }
-            sendConfirmation(receivedEvent); // Sends the event back to the scheduler
             iterator.remove();  // Safe removal using iterato
         }
         currentState = DroneSubsystemState.WAITING;
