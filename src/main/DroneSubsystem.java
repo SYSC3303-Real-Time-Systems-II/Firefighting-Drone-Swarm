@@ -15,7 +15,9 @@ public class DroneSubsystem implements Runnable {
     private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
     private final ConcurrentHashMap<Integer, Drone> workingDrones = new ConcurrentHashMap<>();
 
-    private InputEvent currentEvent;
+    //private InputEvent currentEvent;
+    private List<InputEvent> pendingEvents = new ArrayList<>();
+    private List<InputEvent> inProcessEvents = new ArrayList<>();
     private DroneModel droneModel;
 
     public DroneSubsystem(String name, int numDrones) {
@@ -46,16 +48,16 @@ public class DroneSubsystem implements Runnable {
      * Gets the input event for the drone subsystem which can be received from the scheduler or sent to the
      * scheduler. FOR TESTING PURPOSES
      */
-    public InputEvent getCurrentEvent() {
-        return currentEvent;
-    }
+//    public InputEvent getCurrentEvent() {
+//        return currentEvent;
+//    }
 
     /**
      * Set the input event for the drone subsystem. FOR TESTING PURPOSES.
      */
-    public void setCurrentEvent(InputEvent currentEvent) {
-        this.currentEvent = currentEvent;
-    }
+//    public void setCurrentEvent(InputEvent currentEvent) {
+//        this.currentEvent = currentEvent;
+//    }
 
     /**
      * Gets the hashmap for the working drones. FOR TESTING PURPOSES.
@@ -95,12 +97,12 @@ public class DroneSubsystem implements Runnable {
 
             InputEvent event = deserializeEvent(packet.getData()); // Deserializes the data
             System.out.println("["+this.name + "] RECEIVED EVENT --> " + "INPUT_EVENT_" + event.getEventID() + " (" +  event + ")" + " FROM: " + "SCHEDULER"); // Prints a message that it has received the data
-            currentEvent = event;
-            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.RECEIVED_EVENT, this.currentEvent, null);
+            pendingEvents.add(event);
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.RECEIVED_EVENT, event, null);
             currentState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER;
 
         }catch (SocketTimeoutException e) {
-            currentState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER;
+            currentState = DroneSubsystemState.RECEIVED_EVENT_FROM_SCHEDULER;
 
         }catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -108,13 +110,19 @@ public class DroneSubsystem implements Runnable {
     }
 
     public void handleReceivedEventState() {
-        if(currentEvent != null) {
-            Drone selectedDrone = chooseDroneAlgorithm(currentEvent); // Selects the closest Drone bases on the event coordinates/zone
+        //iterate the pending events and send them out
+        for (int i=0; i < pendingEvents.size(); i++) {
+            InputEvent currentEvent = pendingEvents.get(i);
+            if (currentEvent != null) {
+                Drone selectedDrone = chooseDroneAlgorithm(currentEvent); // Selects the closest Drone bases on the event coordinates/zone
 
-            if (selectedDrone != null && availableDrones.remove(selectedDrone)) {
-                selectedDrone.setAssignedEvent(currentEvent); // Assigns the event to the drone
-                workingDrones.put(selectedDrone.getID(), selectedDrone); // Puts the drone in a working drone hashmap
-                System.out.println("["+this.name + "] ASSIGNED INPUT_EVENT_" + currentEvent.getEventID() + " TO: " + selectedDrone.getName()); // Prints the name of the drone that was assigned the event
+                if (selectedDrone != null && availableDrones.remove(selectedDrone)) {
+                    selectedDrone.setAssignedEvent(currentEvent); // Assigns the event to the drone
+                    workingDrones.put(selectedDrone.getID(), selectedDrone); // Puts the drone in a working drone hashmap
+                    pendingEvents.remove(currentEvent);
+                    inProcessEvents.add(currentEvent);
+                    System.out.println("[" + this.name + "] ASSIGNED INPUT_EVENT_" + currentEvent.getEventID() + " TO: " + selectedDrone.getName()); // Prints the name of the drone that was assigned the event
+                }
             }
         }
         currentState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER; // Moves to the next state
@@ -151,13 +159,21 @@ public class DroneSubsystem implements Runnable {
             } else {
                 receivedEvent = workingDrone.getCurrentEvent();
             }
-            if (receivedEvent != null) {
+            if (receivedEvent != null ) {
                 if (receivedEvent.getFaultType() == null) {
-                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED INPUT_EVENT_" +
-                            receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+                    if (receivedEvent.getRemainingAgentNeeded() <=0) {
+                        System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+                        inProcessEvents.remove(receivedEvent);
+                    } else if(receivedEvent.getRemainingAgentNeeded() > 0){
+                        System.out.println("["+name+"] REQUEUED EVENT "+receivedEvent.getEventID() +" ("+receivedEvent.getRemainingAgentNeeded()+"L remaining)");
+                        inProcessEvents.remove(receivedEvent);
+                        pendingEvents.add(receivedEvent);
+                        availableDrones.add(workingDrone);
+                        iterator.remove();
+                        continue;
+                    }
                 } else {
-                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": FAILED TO COMPLETE INPUT_EVENT_" +
-                            receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": FAILED TO COMPLETE INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
                 }
             }
             // Add the drone back to available pool if it is not in a fault state.
