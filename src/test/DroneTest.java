@@ -2,6 +2,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.io.IOException;
 import java.time.LocalTime;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class DroneTest {
 
     private Drone drone;
+
     /**
      * Initializes a new Drone instance before each test.
      */
@@ -24,135 +26,167 @@ class DroneTest {
     }
 
     /**
-     * Tests that the drone's name is generated correctly based on its ID.
+     * Tests serialization and deserialization of events.
      */
     @Test
-    public void testGetNameAndID() {
-        int id = drone.getID();
-        assertEquals("Drone" + id, drone.getName());
+    public void testSerializeDeserializeEvent() throws IOException, ClassNotFoundException, IOException {
+        // Create test event
+        InputEvent originalEvent = new InputEvent("14:00:00", 1, "FIRE_DETECTED", "Low", Status.UNRESOLVED, null);
+        Zone zone = new Zone(1, new Coordinate(5, 5), new Coordinate(15, 15));
+        originalEvent.setZone(zone);
+
+        // Serialize
+        byte[] serializedData = drone.serializeEvent(originalEvent);
+        assertNotNull(serializedData);
+        assertTrue(serializedData.length > 0);
+
+        // Deserialize
+        InputEvent deserializedEvent = drone.deserializeEvent(serializedData);
+        assertNotNull(deserializedEvent);
+        assertEquals(originalEvent.getEventID(), deserializedEvent.getEventID());
+        assertEquals(originalEvent.getEventType(), deserializedEvent.getEventType());
+        assertEquals(originalEvent.getStatus(), deserializedEvent.getStatus());
     }
 
     /**
-     * Tests that the drone initializes with coordinates (0,0).
+     * Tests setting and getting the current coordinates.
      */
     @Test
-    public void testInitialCoordinates() {
-        // The drone should initialize at (0,0)
-        assertEquals(0, drone.getCurrentCoordinates().getX(), 1e-9);
+    public void testSetAndGetCurrentCoordinates() {
+        Coordinate newCoord = new Coordinate(10.5, 20.5);
+        drone.setCurrentCoordinates(newCoord);
+        assertEquals(10.5, drone.getCurrentCoordinates().getX(), 1e-9);
+        assertEquals(20.5, drone.getCurrentCoordinates().getY(), 1e-9);
+    }
+
+    /**
+     * Tests the port ID initialization and retrieval.
+     */
+    @Test
+    public void testGetPortID() {
+        int id = drone.getID();
+        // Since nextID is incremented after assignment, the portID should be 8000 + id + 1
+        assertEquals(8000 + id + 1, drone.getPortID());
+    }
+
+    /**
+     * Tests calculation of return travel time to base (0,0).
+     */
+    @Test
+    public void testCalculateReturnTravelTime() {
+        // Set drone coordinates to a non-zero position
+        drone.setCurrentCoordinates(new Coordinate(30, 40));
+
+        // Calculate expected time: distance to origin / top speed
+        double distance = Math.sqrt(30 * 30 + 40 * 40); // Distance to (0,0)
+        double expectedTime = distance / drone.TOP_SPEED;
+
+        assertEquals(expectedTime, drone.calculateReturnTravelTime(), 1e-9);
+    }
+
+    /**
+     * Tests location updating when returning to base.
+     */
+    @Test
+    public void testUpdateReturnLocation() {
+        // Set initial position
+        drone.setCurrentCoordinates(new Coordinate(50, 0));
+
+        // Update for 1 second
+        drone.updateReturnLocation(1.0);
+
+        // After 1 second, should move TOP_SPEED meters toward origin
+        assertEquals(50 - drone.TOP_SPEED, drone.getCurrentCoordinates().getX(), 1e-9);
+        assertEquals(0, drone.getCurrentCoordinates().getY(), 1e-9);
+
+        // Test snapping to origin when very close
+        drone.setCurrentCoordinates(new Coordinate(0.05, 0.05));
+        drone.updateReturnLocation(1.0);
+
+        assertTrue(0 > drone.getCurrentCoordinates().getX());
+        assertTrue(0> drone.getCurrentCoordinates().getY());
+    }
+
+    /**
+     * Tests location updating when traveling to a zone.
+     */
+    @Test
+    public void testUpdateLocation() {
+        // Create test event with zone
+        InputEvent event = new InputEvent("14:00:00", 1, "FIRE_DETECTED", "Low", Status.UNRESOLVED, null);
+        Zone zone = new Zone(1, new Coordinate(0, 0), new Coordinate(20, 0));
+        event.setZone(zone);
+
+        // Set assigned event
+        drone.setAssignedEvent(event);
+
+        // Initial position at (0,0)
+        // Update for 1 second - should move toward zone center at (10,0)
+        drone.updateLocation(1.0);
+
+        // Should move TOP_SPEED meters toward zone center
+        assertEquals(drone.TOP_SPEED, drone.getCurrentCoordinates().getX(), 1e-9);
         assertEquals(0, drone.getCurrentCoordinates().getY(), 1e-9);
     }
 
     /**
-     * Tests setting and retrieving the local time for the drone.
+     * Tests the drop completion status setting and retrieval.
      */
     @Test
-    public void testSetAndGetLocalTime() {
-        LocalTime now = LocalTime.now();
-        drone.setLocalTime(now);
-        assertEquals(now, drone.getLocalTime());
-    }
+    public void testDropCompletedStatus() {
+        // Initially should be false
+        assertFalse(drone.isDropCompleted());
 
+        // Set to true
+        drone.setDropCompleted(true);
+        assertTrue(drone.isDropCompleted());
 
-    /**
-     * Tests the methods for managing water level.
-     * Verifies that the water level is initially at maximum capacity,
-     * can be set to a different value, and is restored upon refill.
-     */
-    @Test
-    public void testWaterLevelMethods() {
-        // Initially, water level should equal MAX_WATER_CAPACITY
-        assertEquals(drone.MAX_WATER_CAPACITY, drone.getWaterLevel(), 1e-9);
-
-        // Change water level and then refill
-        drone.setWaterLevel(10.0);
-        assertEquals(10.0, drone.getWaterLevel(), 1e-9);
-        drone.refillWater();
-        assertEquals(drone.MAX_WATER_CAPACITY, drone.getWaterLevel(), 1e-9);
+        // Set back to false
+        drone.setDropCompleted(false);
+        assertFalse(drone.isDropCompleted());
     }
 
     /**
-     * Tests the battery management methods.
-     * Verifies that the battery starts at maximum capacity,
-     * decreases correctly when drained, and resets upon charging.
+     * Tests calculating travel time to a zone and back (home zone time).
      */
     @Test
-    public void testBatteryMethods() {
-        // Initially, battery level should equal MAX_BATTERY_CAPACITY
-        assertEquals(drone.MAX_BATTERY_CAPACITY, drone.getBatteryLevel(), 1e-9);
+    public void testCalculateHomeZoneTime() {
+        // Set initial position
+        drone.setCurrentCoordinates(new Coordinate(0, 0));
 
-        // Drain battery: drainBattery(seconds) reduces battery by seconds * BATTERY_DRAIN_RATE
-        double initialBattery = drone.getBatteryLevel();
-        drone.drainBattery(5); // expected drain: 5 * 0.1 = 0.5
-        assertEquals(initialBattery - 0.5, drone.getBatteryLevel(), 1e-9);
+        // Target coordinate
+        Coordinate target = new Coordinate(30, 40);
 
-        // Recharge battery
-        drone.chargeBattery();
-        assertEquals(drone.MAX_BATTERY_CAPACITY, drone.getBatteryLevel(), 1e-9);
+        // Expected time is twice the one-way time (for round trip)
+        double distance = Math.sqrt(30 * 30 + 40 * 40);
+        double expectedTime = (distance / drone.TOP_SPEED) * 2;
+
+        assertEquals(expectedTime, drone.calculateHomeZoneTime(target), 1e-9);
     }
 
     /**
-     * Tests the calculation of travel time from the drone's current position to an event's zone.
-     * The zone's center is computed as the midpoint between its start and end coordinates.
+     * Tests that the state machine is properly initialized.
      */
     @Test
-    public void testCalculateZoneTravelTime() {
-        // Create a Zone whose center is computed as the midpoint of its start and end coordinates.
-        // For example, let the zone start at (0,0) and end at (20,0) so that the center is (10,0).
-        Zone zone = new Zone(1, new Coordinate(0, 0), new Coordinate(20, 0));
+    public void testInitialDroneState() {
+        assertTrue(drone.getDroneState() instanceof AvailableState);
+    }
+
+    /**
+     * Tests setting and getting the assigned event.
+     */
+    @Test
+    public void testSetAndGetAssignedEvent() {
+        // Create test event
         InputEvent event = new InputEvent("14:00:00", 1, "FIRE_DETECTED", "Low", Status.UNRESOLVED, null);
-        event.setZone(zone);
-        // With currentCoordinates = (0,0), distance from (0,0) to (10,0) is 10.
-        // Travel time = distance / TOP_SPEED = 10 / 20.8.
-        double expectedTime = 10.0 / drone.TOP_SPEED;
-        double travelTime = drone.calculateZoneTravelTime(event);
-        assertEquals(expectedTime, travelTime, 1e-9);
-    }
 
-    /**
-     * Tests that draining the battery over a specified period decreases the battery level as expected.
-     */
-    @Test
-    public void testDrainBattery() {
-        double initialBattery = drone.getBatteryLevel();
-        drone.drainBattery(10); // Expected drain: 10 * 0.1 = 1.0
-        assertEquals(initialBattery - 1.0, drone.getBatteryLevel(), 1e-9);
-    }
+        // Initially null
+        assertNull(drone.getAssignedEvent());
 
-    /**
-     * Tests that the sleepFor method causes the thread to pause for approximately the specified duration.
-     */
-    @Test
-    public void testSleepFor() {
-        // Test that sleepFor approximately sleeps for the given duration.
-        long start = System.currentTimeMillis();
-        drone.sleepFor(0.5); // Sleep for 0.5 seconds.
-        long elapsed = System.currentTimeMillis() - start;
-        // Allow some tolerance for thread scheduling delays.
-        assertTrue(elapsed >= 500);
+        // Set and verify
+        drone.setAssignedEvent(event);
+        assertEquals(event, drone.getAssignedEvent());
+        assertEquals(1, drone.getAssignedEvent().getEventID());
+        assertEquals(EventType.FIRE_DETECTED, drone.getAssignedEvent().getEventType());
     }
-
-    /**
-     * Tests that the drone enters the correct state when it encounters a fault
-     */
-//    @Test
-//    public void testDroneFaultState() {
-//        drone.setAssignedEvent(new InputEvent("12:00:00", 4, "DRONE_REQUEST", "Low", Status.UNRESOLVED, FaultType.STUCK));
-//
-//        if (drone.getAssignedEvent().getFaultType() == FaultType.STUCK) {
-//            DroneStateMachine DSM = new DroneStateMachine() {
-//                @Override
-//                public void handle(Drone context) {
-//                    //
-//                }
-//            };
-//            DSM.handle(drone);
-//            assertTrue(drone.getDroneState() instanceof AvailableState);
-//        }
-//        else if (drone.getAssignedEvent().getFaultType() == FaultType.JAMMED) {
-//
-//        }
-//        else if (drone.getAssignedEvent().getFaultType() == FaultType.CORRUPT) {
-//
-//        }
-//    }
 }

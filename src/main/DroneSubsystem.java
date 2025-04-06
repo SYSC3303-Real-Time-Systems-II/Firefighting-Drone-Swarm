@@ -18,9 +18,6 @@ public class DroneSubsystem implements Runnable {
 
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
-//    private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
-
-    //private InputEvent currentEvent;
     private List<InputEvent> pendingEvents = new ArrayList<>();
     private DroneModel droneModel;
 
@@ -113,13 +110,11 @@ public class DroneSubsystem implements Runnable {
      * After processing, transitions the state to SENDING_EVENT_TO_SCHEDULER.
      */
     public void handleReceivedEventState() {
-        //System.out.println("****** "+ pendingEvents);
         //iterate the pending events and send them out
         for (int i=0; i < pendingEvents.size(); i++) {
             InputEvent currentEvent = pendingEvents.get(i);
             try {
                 Drone selectedDrone = chooseDroneAlgorithm(currentEvent);
-//                System.out.println("HERERERER   " + selectedDrone.getName());
                 if (selectedDrone != null ) {
                     byte[] data = serializeEvent(currentEvent); // Serializes the event
                     // Sends it to that specific drone
@@ -127,7 +122,6 @@ public class DroneSubsystem implements Runnable {
                     droneSocket.send(packet); // Sends the damn packet
                     selectedDrone.setAssignedEvent(currentEvent);
                     pendingEvents.remove(currentEvent);
-                    //System.out.println("______ "+ pendingEvents);
                     System.out.println("[" + this.name + "] ASSIGNED INPUT_EVENT_" + currentEvent.getEventID() + " TO: " + selectedDrone.getName()); // Prints the name of the drone that was assigned the event
                 }
             }catch (IOException e) {
@@ -188,6 +182,7 @@ public class DroneSubsystem implements Runnable {
      * @return The closest available {@link Drone}, or null if no drone is available.
      */
     private Drone chooseDroneAlgorithm(InputEvent event) {
+
         Coordinate eventCoords = event.getZone().getZoneCenter();
         Drone closestDrone = null;
         double minDistance = Double.MAX_VALUE;
@@ -233,6 +228,7 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+
     /**
      * Serializes an {@link InputEvent} into a byte array.
      *
@@ -246,6 +242,7 @@ public class DroneSubsystem implements Runnable {
         oos.writeObject(event);
         return bos.toByteArray();
     }
+
 
     /**
      * Deserializes a byte array into an {@link InputEvent}.
