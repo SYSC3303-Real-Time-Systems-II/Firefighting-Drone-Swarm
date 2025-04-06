@@ -238,19 +238,68 @@ public class DroneMapView extends JPanel {
 
     private void drawFires(Graphics g) {
         Image fireImage = loadImage("fire.png");
-        if (!fireEvents.isEmpty()) {
-            System.out.println("Fire events count: " + fireEvents.size());
-            System.out.println("fireevents not null");
-            for (InputEvent fireEvent : fireEvents.values()) {
-                Zone zone = fireEvent.getZone();
-                Coordinate fireCoords = zone.getZoneCenter();
-                int x = (int) fireCoords.getX() / CELL_SIZE;
-                int y = (int) fireCoords.getY() / CELL_SIZE;
-                //g.setColor(Color.RED);
-                //g.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                g.drawImage(fireImage, x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE, this);
+        if (fireEvents.isEmpty()) {
+            return;
+        }
+        // Group fires by zone
+        Map<Integer, List<InputEvent>> firesByZone = new HashMap<>();
+        for (InputEvent fireEvent : fireEvents.values()) {
+            int zoneId = fireEvent.getZone().getZoneID();
+            firesByZone.computeIfAbsent(zoneId, k -> new ArrayList<>()).add(fireEvent);
+        }
+
+        // For each zone with fires, place them
+        for (Map.Entry<Integer, List<InputEvent>> zoneEntry : firesByZone.entrySet()) {
+            List<InputEvent> zoneFires = zoneEntry.getValue();
+            if (zoneFires.isEmpty()) {
+                continue;
+            }
+
+            // All events in zoneFires share the same zone
+            Zone zone = zoneFires.get(0).getZone();
+            Coordinate center = zone.getZoneCenter();
+
+            // The cell (row,col) that contains the zone center
+            int centerCellX = (int) (center.getX() / CELL_SIZE);
+            int centerCellY = (int) (center.getY() / CELL_SIZE);
+
+            // The top-left pixel of that cell
+            int cellPixelX = centerCellX * CELL_SIZE;
+            int cellPixelY = centerCellY * CELL_SIZE;
+
+            // If there's only 1 fire in this zone, fill the entire cell
+            if (zoneFires.size() == 1) {
+                InputEvent singleFireEvent = zoneFires.get(0);
+                g.drawImage(fireImage, cellPixelX, cellPixelY, CELL_SIZE, CELL_SIZE, this);
                 g.setColor(Color.BLACK);
-                g.drawString(fireEvent.getSeverity().toString().substring(0,1), x * CELL_SIZE, y * CELL_SIZE -4);
+                String severityLetter = singleFireEvent.getSeverity().toString().substring(0, 1);
+                g.drawString(severityLetter, cellPixelX, cellPixelY - 2);
+
+            } else {
+                // Quadrant logic for multiple fires
+                int fireIconSize = CELL_SIZE / 2; // half cell size
+                List<Point> quadrantOffsets = new ArrayList<>();
+                // Quadrants: top-left, top-right, bottom-left, bottom-right
+                quadrantOffsets.add(new Point(0, 0));
+                quadrantOffsets.add(new Point(CELL_SIZE - fireIconSize, 0));
+                quadrantOffsets.add(new Point(0, CELL_SIZE - fireIconSize));
+                quadrantOffsets.add(new Point(CELL_SIZE - fireIconSize, CELL_SIZE - fireIconSize));
+
+                // Place each fire in a quadrant (reuse the 4th quadrant for 5+ fires)
+                for (int i = 0; i < zoneFires.size(); i++) {
+                    InputEvent fireEvent = zoneFires.get(i);
+                    int quadrantIndex = Math.min(i, quadrantOffsets.size() - 1);
+                    Point offset = quadrantOffsets.get(quadrantIndex);
+
+                    int drawX = cellPixelX + offset.x;
+                    int drawY = cellPixelY + offset.y;
+
+                    // Draw each fire image at half size
+                    g.drawImage(fireImage, drawX, drawY, fireIconSize, fireIconSize, this);
+                    g.setColor(Color.BLACK);
+                    String severityLetter = fireEvent.getSeverity().toString().substring(0,1);
+                    g.drawString(severityLetter, drawX, drawY - 2);
+                }
             }
         }
     }
