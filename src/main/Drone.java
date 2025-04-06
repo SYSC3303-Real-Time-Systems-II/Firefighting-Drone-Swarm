@@ -16,7 +16,7 @@ public class Drone implements Runnable{
     public final double DECELERATION_TIME = 0.075; // The deceleration time of the drone
     public final double TOP_SPEED = 20.8; // Top speed of the drone in meters per second
     public final double DROP_WATER_TIME = 20.0; // The time it takes for the drone to drop the water
-    public final double MAX_WATER_CAPACITY = 15.0;
+    public static final double MAX_WATER_CAPACITY = 15.0;
     public final double MAX_BATTERY_CAPACITY = 100.0;
     public static final double BATTERY_DRAIN_RATE = 0.1; // battery % drained per second
 
@@ -101,6 +101,14 @@ public class Drone implements Runnable{
      */
     public DatagramSocket getSendReceiveSocket() {
         return sendReceiveSocket;
+    }
+
+    /**
+     * sets the barrerylevel of drone
+     * @param batteryLevel sets the barrerylevel of drone
+     */
+    public void setBatteryLevel(double batteryLevel) {
+        this.batteryLevel = batteryLevel;
     }
 
     /**
@@ -229,7 +237,6 @@ public class Drone implements Runnable{
             Thread.sleep((int) (seconds * 1000)); // Convert to milliseconds
         } catch (InterruptedException e) { // If something when wrong
             Thread.currentThread().interrupt(); // Gets the interrupt
-            System.err.println("Drone interrupted during sleep."); // Prints the error
         }
     }
 

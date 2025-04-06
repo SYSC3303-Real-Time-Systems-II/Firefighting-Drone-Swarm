@@ -13,9 +13,6 @@ public class DroneSubsystem implements Runnable {
 
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
-//    private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
-
-    //private InputEvent currentEvent;
     private List<InputEvent> pendingEvents = new ArrayList<>();
     private DroneModel droneModel;
 
@@ -88,13 +85,11 @@ public class DroneSubsystem implements Runnable {
     }
 
     public void handleReceivedEventState() {
-        //System.out.println("****** "+ pendingEvents);
         //iterate the pending events and send them out
         for (int i=0; i < pendingEvents.size(); i++) {
             InputEvent currentEvent = pendingEvents.get(i);
             try {
                 Drone selectedDrone = chooseDroneAlgorithm(currentEvent);
-//                System.out.println("HERERERER   " + selectedDrone.getName());
                 if (selectedDrone != null ) {
                     byte[] data = serializeEvent(currentEvent); // Serializes the event
                     // Sends it to that specific drone
@@ -102,7 +97,6 @@ public class DroneSubsystem implements Runnable {
                     droneSocket.send(packet); // Sends the damn packet
                     selectedDrone.setAssignedEvent(currentEvent);
                     pendingEvents.remove(currentEvent);
-                    //System.out.println("______ "+ pendingEvents);
                     System.out.println("[" + this.name + "] ASSIGNED INPUT_EVENT_" + currentEvent.getEventID() + " TO: " + selectedDrone.getName()); // Prints the name of the drone that was assigned the event
                 }
             }catch (IOException e) {
@@ -150,7 +144,7 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
-    private Drone chooseDroneAlgorithm(InputEvent event) {
+    public Drone chooseDroneAlgorithm(InputEvent event) {
         Coordinate eventCoords = event.getZone().getZoneCenter();
         Drone closestDrone = null;
         double minDistance = Double.MAX_VALUE;
@@ -184,14 +178,14 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
-    private byte[] serializeEvent(InputEvent event) throws IOException {
+    public byte[] serializeEvent(InputEvent event) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
         oos.writeObject(event);
         return bos.toByteArray();
     }
 
-    private InputEvent deserializeEvent(byte[] data) throws IOException, ClassNotFoundException {
+    public InputEvent deserializeEvent(byte[] data) throws IOException, ClassNotFoundException {
         ByteArrayInputStream bis = new ByteArrayInputStream(data);
         ObjectInputStream ois = new ObjectInputStream(bis);
         return (InputEvent) ois.readObject();
