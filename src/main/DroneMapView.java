@@ -58,15 +58,15 @@ public class DroneMapView extends JPanel {
         if (event.getStatus() == Status.COMPLETE) {
             //completedEvents.put(event.getZoneId(), event);
             System.out.println("event completed...");
-            fireEvents.remove(event.getZoneId());
+            fireEvents.remove(event.getEventID());
             System.out.println("new fire events size: "+fireEvents.size());
         }
         if (event.getStatus() == Status.UNRESOLVED) {
-            fireEvents.put(event.getZoneId(), event);
+            fireEvents.put(event.getEventID(), event);
         }
 
         if (event.getFaultType() != null) {
-            failedEvents.put(event.getZoneId(), event);
+            failedEvents.put(event.getEventID(), event);
             System.out.println("event failed...");
         }
         repaint();
