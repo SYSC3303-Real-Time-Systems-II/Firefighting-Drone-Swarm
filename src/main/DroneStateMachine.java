@@ -41,6 +41,8 @@ class AvailableState extends InBaseState {
      */
     @Override
     public void handle(Drone context) {
+        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.WAITING_FOR_TASK, null, context.getName());
+
         try{
             byte[] buffer = new byte[6000];
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
@@ -50,6 +52,7 @@ class AvailableState extends InBaseState {
             InputEvent event = context.deserializeEvent(packet.getData()); // Deserializes the data
 
             context.setAssignedEvent(event); // Sets the assigned event of the drone from the one it received
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.ASSIGNED_EVENT, event, context.getName());
 
             event.setHandlingDrone(context.getName());
 
@@ -91,6 +94,8 @@ class AscendingState extends InBaseState {
         context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime)); // Adds the local time
         context.sleepFor(context.ACCELERATION_TIME);
         System.out.println("[" + context.getName() + "] ASCENDING AT TIME: " + context.getLocalTime());
+        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.ASCENDING, context.getAssignedEvent(), context.getName());
+
         // Handle if the drone has a fault or not
         if (context.getAssignedEvent().getFaultType() == FaultType.STUCK) { //
             context.setDroneState(new StuckState()); // Goes to stuck state
@@ -175,7 +180,7 @@ class JammedState extends InFieldState {
             System.out.println("["+context.getName() + "] NOZZLE IS JAMMED."); // Prints a message that the Nozzle got stuck
             Thread.sleep(2000);
             System.out.println("[" + context.getName() + "] NOW OFFLINE."); // Makes the drone offline
-
+            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.OFFLINE, context.getAssignedEvent(), context.getName());
             byte[] data = context.serializeEvent(context.getAssignedEvent()); // Serializes the event
             // Resends the packet to be sent back and rescheduled
             DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 6001);
