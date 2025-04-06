@@ -14,6 +14,15 @@ public class DroneMapController {
     private DatagramSocket socket;
     private boolean running = true;
 
+
+    /**
+     * Constructs a DroneMapController with the given DroneMapView and UDP port.
+     *
+     * @param view The {@link DroneMapView} instance that will be updated with new data.
+     * @param port The UDP port on which the controller listens for incoming packets.
+     * @throws SocketException If the socket could not be opened or the socket could not
+     *                         bind to the specified port.
+     */
     public DroneMapController(DroneMapView view, int port) throws SocketException {
         this.view = view;
         this.socket = new DatagramSocket(port);
@@ -62,11 +71,20 @@ public class DroneMapController {
         }).start();
     }
 
+    /**
+     * Stops the controller from listening for further packets and closes the socket.
+     */
     public void stop() {
         running = false;
         socket.close();
     }
 
+    /**
+     * Deserializes a byte array into an Object using standard Java serialization.
+     *
+     * @param data The byte array containing the serialized object data.
+     * @return The deserialized {@link Object}, or {@code null} if an error occurred.
+     */
     private Object deserialize(byte[] data) {
         try (ByteArrayInputStream bis = new ByteArrayInputStream(data);
              ObjectInputStream ois = new ObjectInputStream(bis)) {

@@ -3,8 +3,13 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-public class DroneSubsystem implements Runnable {
 
+/**
+ * The DroneSubsystem class is responsible for managing the communication between the Scheduler and the Drones.
+ * It listens for incoming events from the Scheduler, assigns events to drones, and sends confirmations back.
+ * It also gathers status updates and metrics to be sent to the GUI.
+ */
+public class DroneSubsystem implements Runnable {
 
     private final String name;
     private final DatagramSocket schedulerSocket; // For Scheduler on port 6000
@@ -19,6 +24,15 @@ public class DroneSubsystem implements Runnable {
     private List<InputEvent> pendingEvents = new ArrayList<>();
     private DroneModel droneModel;
 
+
+    /**
+     * Constructs a DroneSubsystem with the given name and number of drones.
+     * Initializes the drone fleet, starts the drone model thread, and sets up UDP sockets.
+     *
+     * @param name      The name of this DroneSubsystem.
+     * @param numDrones The number of drones to initialize.
+     * @throws RuntimeException if UDP sockets cannot be initialized.
+     */
     public DroneSubsystem(String name, int numDrones) {
         MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.STARTING, null, null);
 
@@ -45,7 +59,10 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
-
+    /**
+     * Continuously listens for incoming UDP packets and processes them based on the current subsystem state.
+     * The method cycles through waiting for events, handling received events, and sending confirmations.
+     */
     @Override
     public void run() {
         System.out.println("["+this.name + "] SUBSYSTEM STARTED WITH " + drones.size() + " DRONES.");
@@ -67,6 +84,10 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+    /**
+     * Handles the waiting state by listening for an incoming event from the Scheduler.
+     * Upon receiving an event, the event is deserialized, added to pending events, and the state changes.
+     */
     public void handleWaitingState() {
 
         try {
@@ -87,6 +108,10 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+    /**
+     * Processes all pending events by assigning each event to an available drone based on a selection algorithm.
+     * After processing, transitions the state to SENDING_EVENT_TO_SCHEDULER.
+     */
     public void handleReceivedEventState() {
         //System.out.println("****** "+ pendingEvents);
         //iterate the pending events and send them out
@@ -114,6 +139,11 @@ public class DroneSubsystem implements Runnable {
 
     }
 
+    /**
+     * Waits for a confirmation packet from a drone, processes the received event,
+     * re-queues it if necessary, and sends a confirmation back to the Scheduler.
+     * Finally, transitions the state back to WAITING.
+     */
     public void handleSendingConfirmationState() {
         boolean reQueueEvent = false;
         try {
@@ -150,6 +180,13 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+    /**
+     * Chooses the best available drone for the given event based on the shortest Euclidean distance
+     * between the drone's current coordinates and the event's zone center.
+     *
+     * @param event The {@link InputEvent} for which a drone is needed.
+     * @return The closest available {@link Drone}, or null if no drone is available.
+     */
     private Drone chooseDroneAlgorithm(InputEvent event) {
         Coordinate eventCoords = event.getZone().getZoneCenter();
         Drone closestDrone = null;
@@ -168,11 +205,23 @@ public class DroneSubsystem implements Runnable {
         return closestDrone;
     }
 
+    /**
+     * Calculates the Euclidean distance between two coordinates.
+     *
+     * @param a The first {@link Coordinate}.
+     * @param b The second {@link Coordinate}.
+     * @return The Euclidean distance as a double.
+     */
     public double calculateDistance(Coordinate a, Coordinate b) {
         return Math.sqrt(Math.pow(a.getX() - b.getX(), 2) +
                 Math.pow(a.getY() - b.getY(), 2));
     }
 
+    /**
+     * Sends a confirmation message back to the Scheduler for the given event.
+     *
+     * @param event The {@link InputEvent} to confirm.
+     */
     private void sendConfirmation(InputEvent event) {
         try {
             byte[] data = serializeEvent(event);
@@ -184,6 +233,13 @@ public class DroneSubsystem implements Runnable {
         }
     }
 
+    /**
+     * Serializes an {@link InputEvent} into a byte array.
+     *
+     * @param event The {@link InputEvent} to serialize.
+     * @return A byte array representing the serialized event.
+     * @throws IOException If an I/O error occurs during serialization.
+     */
     private byte[] serializeEvent(InputEvent event) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -191,12 +247,24 @@ public class DroneSubsystem implements Runnable {
         return bos.toByteArray();
     }
 
+    /**
+     * Deserializes a byte array into an {@link InputEvent}.
+     *
+     * @param data The byte array containing the serialized event.
+     * @return The deserialized {@link InputEvent}.
+     * @throws IOException            If an I/O error occurs during deserialization.
+     * @throws ClassNotFoundException If the class of the serialized object cannot be found.
+     */
     private InputEvent deserializeEvent(byte[] data) throws IOException, ClassNotFoundException {
         ByteArrayInputStream bis = new ByteArrayInputStream(data);
         ObjectInputStream ois = new ObjectInputStream(bis);
         return (InputEvent) ois.readObject();
     }
 
+    /**
+     * Starts a separate thread that periodically gathers drone statuses and metrics from the drone model,
+     * then sends these updates to the GUI via UDP packets.
+     */
     public void startGUIUpdates() {
         new Thread(() -> {
             try (DatagramSocket guisocket = new DatagramSocket()) {
@@ -244,6 +312,13 @@ public class DroneSubsystem implements Runnable {
         }).start();
     }
 
+    /**
+     * Serializes an object into a byte array using Java serialization.
+     *
+     * @param obj The object to serialize.
+     * @return A byte array representing the serialized object.
+     * @throws IOException If an I/O error occurs during serialization.
+     */
     private byte[] serialize(Object obj) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
@@ -252,6 +327,12 @@ public class DroneSubsystem implements Runnable {
         return bos.toByteArray();
     }
 
+    /**
+     * The entry point for the DroneSubsystem application.
+     * Initializes the subsystem with a specified number of drones and starts GUI updates.
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
         try {
             DroneSubsystem subsystem = new DroneSubsystem("DS", 10);

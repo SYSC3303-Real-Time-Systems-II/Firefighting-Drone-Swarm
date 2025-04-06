@@ -8,7 +8,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The Swing panel that displays a grid and the positions of multiple drones.
+ * The Swing panel that displays a grid and the positions of multiple drones,
+ * along with events such as fires and faults.
  */
 public class DroneMapView extends JPanel {
     private static final int CELL_SIZE = 25;
@@ -28,6 +29,10 @@ public class DroneMapView extends JPanel {
     private JLabel throughputLabel;
     private JPanel utilizationPanel;
 
+    /**
+     * Creates the DroneMapView panel with a legend panel on the east side
+     * and a scrollable map panel in the center.
+     */
     public DroneMapView() {
         setBackground(Color.WHITE);
         setLayout(new BorderLayout());
@@ -44,16 +49,32 @@ public class DroneMapView extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
     }
 
+    /**
+     * Updates the list of drone statuses (positions, states, etc.) and triggers a repaint.
+     *
+     * @param statuses A list of {@link DroneStatus} objects providing the latest info on drones.
+     */
     public void updateDisplay(List<DroneStatus> statuses) {
         this.droneStatuses = statuses;
         repaint(); // triggers paintComponent
     }
 
+    /**
+     * Replaces the list of zones and updates the grid size accordingly.
+     *
+     * @param newZones A list of {@link Zone} objects to be displayed.
+     */
     public void setZones(List<Zone> newZones) {
         this.zones = newZones;
         updateGridSize();
     }
 
+    /**
+     * Displays a new or updated event (e.g. fire, fault, completion) on the map.
+     * This method also starts a timer to remove fault messages after 5 seconds.
+     *
+     * @param event The {@link InputEvent} representing the new or updated event status.
+     */
     public void displayEvent(InputEvent event) {
         if (event.getStatus() == Status.COMPLETE) {
             //completedEvents.put(event.getZoneId(), event);
@@ -84,6 +105,10 @@ public class DroneMapView extends JPanel {
         repaint();
     }
 
+    /**
+     * Updates the grid size based on the maximum extents of all zones.
+     * Revalidates and repaints the map panel accordingly.
+     */
     private void updateGridSize() {
         int maxRow = 0, maxCol = 0;
         for (Zone zone : zones) {
@@ -98,6 +123,12 @@ public class DroneMapView extends JPanel {
         mapPanel.revalidate(); // This tells the layout manager to redo the layout based on the new size
         repaint(); // Redraw the component with new dimensions
     }
+
+    /**
+     * Creates and configures a panel containing metrics (response time, throughput, etc.).
+     *
+     * @return A configured {@link JPanel} that displays drone-related metrics.
+     */
     private JPanel createMetricsPanel() {
         JPanel metricsPanel = new JPanel();
         metricsPanel.setLayout(new BoxLayout(metricsPanel, BoxLayout.Y_AXIS));
@@ -126,6 +157,11 @@ public class DroneMapView extends JPanel {
         return metricsPanel;
     }
 
+    /**
+     * Updates the metrics displayed on the metrics panel.
+     *
+     * @param metrics A map containing metric keys and values (e.g. "droneResponseTime", "throughput").
+     */
     public void updateMetrics(Map<?, ?> metrics) {
         SwingUtilities.invokeLater(() -> {
             droneResponseTimeLabel.setText("Drones Average Response Time: " + round2Decimals((double) metrics.get("droneResponseTime")) + " ms");
@@ -143,9 +179,21 @@ public class DroneMapView extends JPanel {
         });
     }
 
+    /**
+     * Rounds a double value to two decimal places, returning a string representation.
+     *
+     * @param decimals The double value to be rounded.
+     * @return A string formatted to two decimal places.
+     */
     private String round2Decimals(double decimals) {
         return String.format("%.2f", decimals);
     }
+
+    /**
+     * Creates the legend panel that shows what each drone state color indicates.
+     *
+     * @return A {@link JPanel} with color + text entries describing each drone state.
+     */
     private JPanel createLegendPanel() {
         JPanel legendPanel = new JPanel();
         legendPanel.setLayout(new BoxLayout(legendPanel, BoxLayout.Y_AXIS));
@@ -166,6 +214,13 @@ public class DroneMapView extends JPanel {
 
     }
 
+    /**
+     * Creates a single legend entry (a colored box and the corresponding text).
+     *
+     * @param color The color displayed in the small box.
+     * @param text  The label text next to the color box.
+     * @return A {@link Component} that can be added to the legend panel.
+     */
     private static Component createLegendEntry(Color color, String text) {
         JPanel entry = new JPanel();
         entry.setLayout(new BoxLayout(entry, BoxLayout.X_AXIS));
@@ -187,6 +242,11 @@ public class DroneMapView extends JPanel {
         return entry;
     }
 
+    /**
+     * Creates the main map panel which houses the grid, zones, drones, fires, etc.
+     *
+     * @return A {@link JPanel} that overrides paintComponent to draw everything.
+     */
     private JPanel createMapPanel() {
         JPanel panel = new JPanel() {
             @Override
@@ -203,16 +263,12 @@ public class DroneMapView extends JPanel {
         panel.setLayout(null); // Use absolute positioning
         return panel;
     }
-//    @Override
-//    protected void paintComponent(Graphics g) {
-//        super.paintComponent(g);
-//        drawGrid(g);
-//        drawZones(g);
-//        drawFires(g);
-//        drawDrones(g);
-//
-//    }
 
+    /**
+     * Draws the light gray grid lines across the panel.
+     *
+     * @param g The {@link Graphics} context to draw onto.
+     */
     private void drawGrid(Graphics g) {
         g.setColor(Color.LIGHT_GRAY);
         for (int r = 0; r < rows; r++) {
@@ -222,6 +278,11 @@ public class DroneMapView extends JPanel {
         }
     }
 
+    /**
+     * Draws the zones in red, each outlined by a rectangle with a small "Zone X" label.
+     *
+     * @param g The {@link Graphics} context to draw onto.
+     */
     private void drawZones(Graphics g) {
         g.setColor(Color.RED);
         for (Zone zone : zones) {
@@ -233,6 +294,12 @@ public class DroneMapView extends JPanel {
             g.drawString("Zone " + zone.getZoneID(), xStart + 30, yStart + 20);
         }
     }
+
+    /**
+     * Draws the drones (as colored circles + an icon), labeling each with its name.
+     *
+     * @param g The {@link Graphics} context to draw onto.
+     */
     private void drawDrones(Graphics g) {
         Image droneImage = loadImage("drone.png");
         if (droneStatuses != null) {
@@ -249,6 +316,12 @@ public class DroneMapView extends JPanel {
         }
     }
 
+
+    /**
+     * Draws a fault icon + red text below the drone if an event is found in the failedEvents map.
+     *
+     * @param g The {@link Graphics} context to draw onto.
+     */
     private void drawFaults(Graphics g) {
         Image faultImage = loadImage("error.png");
         if (failedEvents.isEmpty() || droneStatuses == null) return;
@@ -294,8 +367,12 @@ public class DroneMapView extends JPanel {
         }
     }
 
+
     /**
-     * Helper method to find a drone by name in the current statuses.
+     * Finds and returns the {@link DroneStatus} matching the given drone name.
+     *
+     * @param name The name of the drone, as given by {@link DroneStatus#getDroneName()}.
+     * @return The matching {@link DroneStatus} if found, otherwise null.
      */
     private DroneStatus findDroneStatusByName(String name) {
         for (DroneStatus ds : droneStatuses) {
@@ -306,6 +383,11 @@ public class DroneMapView extends JPanel {
         return null;
     }
 
+    /**
+     * Draws fire icons either full-cell if there's a single fire, or in quadrants if multiple fires exist in the same zone.
+     *
+     * @param g The {@link Graphics} context to draw onto.
+     */
     private void drawFires(Graphics g) {
         Image fireImage = loadImage("fire.png");
         if (fireEvents.isEmpty()) {
@@ -374,7 +456,12 @@ public class DroneMapView extends JPanel {
         }
     }
 
-
+    /**
+     * Determines the color used to represent a drone on the map, based on its state name.
+     *
+     * @param state The string representing the drone's current state.
+     * @return A {@link Color} corresponding to the given state.
+     */
     private Color getDroneColour(String state) {
         return switch (state) {
             case "AvailableState" -> Color.BLUE;
@@ -388,6 +475,12 @@ public class DroneMapView extends JPanel {
         };
     }
 
+    /**
+     * Loads an image from the resources folder.
+     *
+     * @param fileName The name of the image file to load (e.g., "fire.png", "error.png").
+     * @return An {@link Image} if loaded successfully, otherwise null.
+     */
     public Image loadImage(String fileName) {
         try {
             URL imageUrl = getClass().getResource("/"+fileName);
