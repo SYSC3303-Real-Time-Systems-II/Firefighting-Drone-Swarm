@@ -7,17 +7,16 @@ public class DroneSubsystem implements Runnable {
 
 
     private final String name;
-    private final DatagramSocket socket;
+    private final DatagramSocket schedulerSocket; // For Scheduler on port 6000
+    private final DatagramSocket droneSocket;     // For Drones on port 6001
     private DroneSubsystemState currentState = DroneSubsystemState.WAITING;
 
     // Drone management
     private final List<Drone> drones = new CopyOnWriteArrayList<>();
-    private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
-    private final ConcurrentHashMap<Integer, Drone> workingDrones = new ConcurrentHashMap<>();
+//    private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
 
     //private InputEvent currentEvent;
     private List<InputEvent> pendingEvents = new ArrayList<>();
-    private List<InputEvent> inProcessEvents = new ArrayList<>();
     private DroneModel droneModel;
 
     public DroneSubsystem(String name, int numDrones) {
@@ -28,7 +27,6 @@ public class DroneSubsystem implements Runnable {
         for(int i = 0; i < numDrones; i++) {
             Drone drone = new Drone();
             drones.add(drone);
-            availableDrones.add(drone);
             new Thread(drone).start();
         }
 
@@ -37,33 +35,14 @@ public class DroneSubsystem implements Runnable {
         new Thread(droneModel).start();
 
         try {
-            this.socket = new DatagramSocket(6000);
-            this.socket.setSoTimeout(2000);
+            this.schedulerSocket = new DatagramSocket(6000);
+            this.schedulerSocket.setSoTimeout(2000);
+            this.droneSocket = new DatagramSocket(6001);
+            this.droneSocket.setSoTimeout(2000);
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to initialize UDP socket", e);
         }
-    }
-
-    /**
-     * Gets the input event for the drone subsystem which can be received from the scheduler or sent to the
-     * scheduler. FOR TESTING PURPOSES
-     */
-//    public InputEvent getCurrentEvent() {
-//        return currentEvent;
-//    }
-
-    /**
-     * Set the input event for the drone subsystem. FOR TESTING PURPOSES.
-     */
-//    public void setCurrentEvent(InputEvent currentEvent) {
-//        this.currentEvent = currentEvent;
-//    }
-
-    /**
-     * Gets the hashmap for the working drones. FOR TESTING PURPOSES.
-     */
-    public ConcurrentHashMap<Integer, Drone> getWorkingDrones() {
-        return workingDrones;
     }
 
 
@@ -89,12 +68,11 @@ public class DroneSubsystem implements Runnable {
     }
 
     public void handleWaitingState() {
+
         try {
             byte[] buffer = new byte[6000];
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-            socket.receive(packet); // Receives a packet from the Scheduler
-
+            schedulerSocket.receive(packet); // Receives a packet from the Scheduler
             InputEvent event = deserializeEvent(packet.getData()); // Deserializes the data
             System.out.println("["+this.name + "] RECEIVED EVENT --> " + "INPUT_EVENT_" + event.getEventID() + " (" +  event + ")" + " FROM: " + "SCHEDULER"); // Prints a message that it has received the data
             pendingEvents.add(event);
@@ -110,88 +88,66 @@ public class DroneSubsystem implements Runnable {
     }
 
     public void handleReceivedEventState() {
+        //System.out.println("****** "+ pendingEvents);
         //iterate the pending events and send them out
         for (int i=0; i < pendingEvents.size(); i++) {
             InputEvent currentEvent = pendingEvents.get(i);
-            if (currentEvent != null) {
-                Drone selectedDrone = chooseDroneAlgorithm(currentEvent); // Selects the closest Drone bases on the event coordinates/zone
-
-                if (selectedDrone != null && availableDrones.remove(selectedDrone)) {
-                    selectedDrone.setAssignedEvent(currentEvent); // Assigns the event to the drone
-                    workingDrones.put(selectedDrone.getID(), selectedDrone); // Puts the drone in a working drone hashmap
+            try {
+                Drone selectedDrone = chooseDroneAlgorithm(currentEvent);
+//                System.out.println("HERERERER   " + selectedDrone.getName());
+                if (selectedDrone != null ) {
+                    byte[] data = serializeEvent(currentEvent); // Serializes the event
+                    // Sends it to that specific drone
+                    DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), selectedDrone.getPortID());
+                    droneSocket.send(packet); // Sends the damn packet
+                    selectedDrone.setAssignedEvent(currentEvent);
                     pendingEvents.remove(currentEvent);
-                    inProcessEvents.add(currentEvent);
+                    //System.out.println("______ "+ pendingEvents);
                     System.out.println("[" + this.name + "] ASSIGNED INPUT_EVENT_" + currentEvent.getEventID() + " TO: " + selectedDrone.getName()); // Prints the name of the drone that was assigned the event
                 }
+            }catch (IOException e) {
+                e.printStackTrace();
             }
+
         }
         currentState = DroneSubsystemState.SENDING_EVENT_TO_SCHEDULER; // Moves to the next state
+
     }
 
     public void handleSendingConfirmationState() {
+        boolean reQueueEvent = false;
         try {
-            Thread.sleep(3000);  // Wait a bit longer to allow the drop to finish.
-        } catch (InterruptedException e) {
+            byte[] buffer = new byte[6000];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+            droneSocket.receive(packet); // Gets the event from the drone
+            InputEvent receivedEvent = deserializeEvent(packet.getData()); // Deserializes the data
+            if (receivedEvent.getFaultType() == null) {
+
+                if(receivedEvent.getRemainingAgentNeeded() <= 0) {
+                    System.out.println("[" + this.name + "]" + " COMPLETED INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+
+                } else if (receivedEvent.getRemainingAgentNeeded() > 0 ) {
+                    System.out.println("[" + name + "] RE-QUEUED EVENT " + receivedEvent.getEventID() + " (" + receivedEvent.getRemainingAgentNeeded() + "L remaining)");
+                    pendingEvents.add(receivedEvent);
+                    reQueueEvent = true;
+                }
+
+            } else if(receivedEvent.getFaultType() != null) {
+                System.out.println("[" + this.name + "]" + " FAILED TO COMPLETE INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
+
+            }
+            if (!reQueueEvent) {
+                sendConfirmation(receivedEvent); // Sends the event back to the scheduler
+            }
+
+            currentState = DroneSubsystemState.WAITING;
+
+        } catch (SocketTimeoutException e){
+            currentState = DroneSubsystemState.WAITING;
+        } catch (ClassNotFoundException | IOException e) {
             throw new RuntimeException(e);
         }
-
-        // Iterate safely over the working drones.
-        Iterator<Map.Entry<Integer, Drone>> iterator = workingDrones.entrySet().iterator();
-        System.out.println("POST --- " + workingDrones);
-        while (iterator.hasNext()) {
-            Map.Entry<Integer, Drone> entry = iterator.next();
-            Drone workingDrone = entry.getValue();
-
-            // Only process the drone if either:
-            // 1) It’s in a fault state, OR
-            // 2) Its water drop has completed (dropCompleted is true).
-            if (!(workingDrone.isDropCompleted() ||
-                    workingDrone.getDroneState() instanceof StuckState ||
-                    workingDrone.getDroneState() instanceof JammedState ||
-                    workingDrone.getDroneState() instanceof CorruptState)) {
-                continue;  // Skip this drone for now
-            }
-
-            InputEvent receivedEvent;
-            if (workingDrone.getDroneState() instanceof StuckState ||
-                    workingDrone.getDroneState() instanceof JammedState ||
-                    workingDrone.getDroneState() instanceof CorruptState) {
-                receivedEvent = workingDrone.getHandledEvent(); // Gets the event in fault cases.
-            } else {
-                receivedEvent = workingDrone.getCurrentEvent();
-            }
-            if (receivedEvent != null ) {
-                if (receivedEvent.getFaultType() == null) {
-                    if (receivedEvent.getRemainingAgentNeeded() <= 0) {
-                        System.out.println("[" + this.name + "] " + workingDrone.getName() + ": COMPLETED INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
-                        inProcessEvents.remove(receivedEvent);
-                    } else if (receivedEvent.getRemainingAgentNeeded() > 0 ) {
-                        System.out.println("[" + name + "] REQUEUED EVENT " + receivedEvent.getEventID() + " (" + receivedEvent.getRemainingAgentNeeded() + "L remaining)");
-                        inProcessEvents.remove(receivedEvent);
-                        pendingEvents.add(receivedEvent);
-
-                        // availableDrones.add(workingDrone);
-                        //iterator.remove();
-                        // continue;
-                    }
-                } else {
-                    System.out.println("[" + this.name + "] " + workingDrone.getName() + ": FAILED TO COMPLETE INPUT_EVENT_" + receivedEvent.getEventID() + " (" + receivedEvent.toString() + ")");
-                    //inProcessEvents.remove(receivedEvent);
-                    pendingEvents.remove(receivedEvent);
-                }
-
-                // Add the drone back to available pool if it is not in a fault state.
-                if (!(workingDrone.getDroneState() instanceof StuckState ||
-                        workingDrone.getDroneState() instanceof JammedState)) {
-                    availableDrones.add(workingDrone); // Adds back to the list of available drones list
-                }
-                if (receivedEvent.getRemainingAgentNeeded() <= 0 || receivedEvent.getFaultType() != null) {
-                    sendConfirmation(receivedEvent); // Sends the event back to the scheduler
-                }
-            }
-            iterator.remove();  // Safe removal using iterato
-        }
-        currentState = DroneSubsystemState.WAITING;
     }
 
     private Drone chooseDroneAlgorithm(InputEvent event) {
@@ -199,19 +155,15 @@ public class DroneSubsystem implements Runnable {
         Drone closestDrone = null;
         double minDistance = Double.MAX_VALUE;
 
-        for (Drone drone : drones) {
-            if (drone.getDroneState() instanceof AvailableState) {
-                Coordinate droneCoords = drone.getCurrentCoordinates();
-                double distance = calculateDistance(eventCoords, droneCoords);
+        // Iterate over ACTUALLY available drones from DroneModel
+        for (Drone drone : droneModel.getAvailableDrones()) {
+            Coordinate droneCoords = drone.getCurrentCoordinates();
+            double distance = calculateDistance(eventCoords, droneCoords);
 
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestDrone = drone;
-                }
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestDrone = drone;
             }
-        }
-        if (closestDrone == null) {
-            System.out.println("There are no drones to be scheduled.");
         }
         return closestDrone;
     }
@@ -224,11 +176,8 @@ public class DroneSubsystem implements Runnable {
     private void sendConfirmation(InputEvent event) {
         try {
             byte[] data = serializeEvent(event);
-            DatagramPacket packet = new DatagramPacket(
-                    data, data.length,
-                    InetAddress.getLocalHost(), 5001
-            );
-            socket.send(packet);
+            DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getLocalHost(), 5001);
+            schedulerSocket.send(packet);
             System.out.println("["+this.name + "] SENDING EVENT TO SCHEDULER --> " + "INPUT_EVENT_" + event.getEventID() + " (" +event.toString() + ")"); // Sends the message back to the Scheduler
         } catch (IOException e) {
             System.err.println("Failed to send confirmation: " + e.getMessage());
