@@ -1,3 +1,7 @@
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+
 /**
  * Interface representing the state of a drone in the state machine.
  */
@@ -37,13 +41,27 @@ class AvailableState extends InBaseState {
      */
     @Override
     public void handle(Drone context) {
-        // Lock and wait until a task is assigned
-        context.waitForTask();
-        context.setLocalTime(context.getCurrentEvent().getTime());
-        System.out.println("["+context.getName() + "] GOT INPUT_EVENT_" + context.getCurrentEvent().getEventID() + " (" + context.getCurrentEvent().toString() + ")" + " AT TIME: " + context.getLocalTime());
-        context.setLocalTime(context.getLocalTime().plusNanos((long) (context.ACCELERATION_TIME * 1000000000)));  // Adds the local time
-        context.sleepFor(context.ACCELERATION_TIME); // Simulates the acceleration time
-        context.setDroneState(new AscendingState()); // The drone becomes on route to the fire zone
+        try{
+            byte[] buffer = new byte[6000];
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+            context.getSendReceiveSocket().receive(packet); // Gets the event
+
+            InputEvent event = context.deserializeEvent(packet.getData()); // Deserializes the data
+
+            context.setAssignedEvent(event); // Sets the assigned event of the drone from the one it received
+
+            context.setLocalTime(context.getAssignedEvent().getTime());
+            System.out.println("["+context.getName() + "] GOT INPUT_EVENT_" + context.getAssignedEvent().getEventID() + " (" + context.getAssignedEvent().toString() + ")" + " AT TIME: " + context.getLocalTime());
+            context.setLocalTime(context.getLocalTime().plusNanos((long) (context.ACCELERATION_TIME * 1000000000)));  // Adds the local time
+            context.sleepFor(context.ACCELERATION_TIME); // Simulates the acceleration time
+            context.setDroneState(new AscendingState()); // The drone becomes on route to the fire zone
+        }
+        catch (IOException | ClassNotFoundException e){
+            e.printStackTrace();
+        }
+
+
     }
 }
 
@@ -58,20 +76,20 @@ class AscendingState extends InBaseState {
      */
     @Override
     public void handle(Drone context) {
-        //context.checkIfTaskSwitch();    //check for change in task
-        double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent()); // Calculates the travel time of the zone
+
+        double travelZoneTime = context.calculateZoneTravelTime(context.getAssignedEvent()); // Calculates the travel time of the zone
         context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime)); // Adds the local time
         context.sleepFor(context.ACCELERATION_TIME);
         System.out.println("["+context.getName() + "] ASCENDING AT TIME: " + context.getLocalTime());
 
         // Handle if the drone has a fault or not
-        if (context.getCurrentEvent().getFaultType() == FaultType.STUCK) { //
+        if (context.getAssignedEvent().getFaultType() == FaultType.STUCK) { //
             context.setDroneState(new StuckState()); // Goes to stuck state
         }
-        else if (context.getCurrentEvent().getFaultType() == FaultType.CORRUPT) {
+        else if (context.getAssignedEvent().getFaultType() == FaultType.CORRUPT) {
             context.setDroneState(new CorruptState()); // Goes to corrupt state
         }
-        else if (context.getCurrentEvent().getFaultType() == FaultType.JAMMED) {
+        else if (context.getAssignedEvent().getFaultType() == FaultType.JAMMED) {
             context.setDroneState(new JammedState()); // Goes to jammed state
         }
         else {
@@ -91,11 +109,25 @@ class StuckState extends InFieldState {
      */
     @Override
     public void handle(Drone context) {
-        System.out.println("["+context.getName() + "] GOT STUCK MID-FLIGHT AND IS GOING OFFLINE."); // Prints a message that the drone got stuck and will be set to offline
-        context.setHandledEvent(context.getCurrentEvent()); // Sets the handled event as the current event
-        context.setCurrentEvent(null); // Sets the current event as null
-        context.setAssignedEvent(null); // Sets the assigned event as null
-        context.waitForTask(); // Calls the wait for tasks to be removed as a drone thread
+        try {
+            System.out.println("["+context.getName() + "] GOT STUCK MID-FLIGHT AND IS GOING OFFLINE."); // Prints a message that the drone got stuck and will be set to offline
+            Thread.sleep(2000);
+            System.out.println("[" + context.getName() + "] NOW OFFLINE."); // Makes the drone offline
+            byte[] data = context.serializeEvent(context.getAssignedEvent()); // Serializes the event
+
+            DatagramPacket packet = new DatagramPacket( // Sends the event back to be rescheduled
+                    data, data.length,
+                    InetAddress.getLocalHost(), 6000
+            );
+
+            context.getSendReceiveSocket().send(packet);
+            context.setAssignedEvent(null); // Sets the assigned event as null
+
+            Thread.sleep(900000000); // Thread goes offline similar by sleeping for a long time
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
     }
 }
 
@@ -105,11 +137,26 @@ class StuckState extends InFieldState {
 class JammedState extends InFieldState {
     @Override
     public void handle(Drone context) {
-        System.out.println("["+context.getName() + "] NOZZLE IS JAMMED."); // Prints a message that the Nozzle got stuck
-        context.setHandledEvent(context.getCurrentEvent());  // Sets the handled event as the current event
-        context.setCurrentEvent(null); // Sets the current event as null
-        context.setAssignedEvent(null); // Sets the assigned event as null
-        context.waitForTask(); // Calls the wait for tasks to be removed as a drone thread
+        try {
+            System.out.println("["+context.getName() + "] NOZZLE IS JAMMED."); // Prints a message that the Nozzle got stuck
+            Thread.sleep(2000);
+            System.out.println("[" + context.getName() + "] NOW OFFLINE."); // Makes the drone offline
+
+            byte[] data = context.serializeEvent(context.getAssignedEvent()); // Serializes the event
+
+            DatagramPacket packet = new DatagramPacket( // Resends the packet to be sent back and rescheduled
+                    data, data.length,
+                    InetAddress.getLocalHost(), 6000
+            );
+
+            context.getSendReceiveSocket().send(packet);
+
+            context.setAssignedEvent(null); // Sets the assigned event as null
+
+            Thread.sleep(900000000); // Thread goes offline similar by sleeping for a long time
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 }
 
@@ -121,15 +168,24 @@ class CorruptState extends InFieldState {
     public void handle(Drone context) {
         try {
             System.out.println("["+context.getName() + "] MESSAGE RECEIVED IS CORRUPTED."); // Prints a message that the packet that was received got corrupted
-            context.setHandledEvent(context.getCurrentEvent());  // Sets the handled event as the current event
-            context.setCurrentEvent(null); // Sets the current event as null
-            context.setAssignedEvent(null); // Sets the assigned event as null
             System.out.println("["+context.getName() + "] RESTARTING DRONE...");
             Thread.sleep(10000); // Sleeps for 10 second to simulate that its being restarted
             System.out.println("["+context.getName() + "] DRONE RESTARTED.");
+
+            byte[] data = context.serializeEvent(context.getAssignedEvent()); // Serializes the event
+
+            DatagramPacket packet = new DatagramPacket( // Sends back teh drone to be rescheduled
+                    data, data.length,
+                    InetAddress.getLocalHost(), 6000
+            );
+
+            context.getSendReceiveSocket().send(packet); // Sends it back to teh drone sub system
+
+            context.setAssignedEvent(null); // Sets the assigned event as null
+
             context.setDroneState(new AvailableState()); // Makes the drone available again
         }
-        catch (InterruptedException e) {
+        catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
     }
@@ -148,15 +204,13 @@ class CruisingState extends InFieldState {
      */
     @Override
     public void handle(Drone context) {
-        double travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
+        double travelZoneTime = context.calculateZoneTravelTime(context.getAssignedEvent());
         int currentTime = 0;
 
         while (currentTime < travelZoneTime) {
-            // Check for task switch every iteration
-            context.checkIfTaskSwitch();
 
             // Recalculate travel time if the event changed
-            travelZoneTime = context.calculateZoneTravelTime(context.getCurrentEvent());
+            travelZoneTime = context.calculateZoneTravelTime(context.getAssignedEvent());
             if (currentTime >= travelZoneTime) break;
 
             // Update location and sleep
@@ -173,7 +227,7 @@ class CruisingState extends InFieldState {
         }
 
         System.out.println("[" + context.getName() + "] CRUISING TO ZONE: "
-                + context.getCurrentEvent().getZoneId() + " AT TIME: " + context.getLocalTime());
+                + context.getAssignedEvent().getZoneId() + " AT TIME: " + context.getLocalTime());
         context.setDroneState(new DropAgentState());
     }
 }
@@ -190,17 +244,30 @@ class DropAgentState extends InFieldState {
      */
     @Override
     public void handle(Drone context) {
-        int waterNeeded = context.getCurrentEvent().getSeverity().getValue();
+        int waterNeeded = context.getAssignedEvent().getSeverity().getValue();
         double currentCapacity = context.getWaterLevel();
         if (currentCapacity >= waterNeeded) {
-            System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
-            context.setWaterLevel(currentCapacity - waterNeeded);
-            context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
-            context.drainBattery(context.DROP_WATER_TIME);
+            try{
+                System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
+                context.setWaterLevel(currentCapacity - waterNeeded);
+                context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
+                context.drainBattery(context.DROP_WATER_TIME);
+
+                byte[] data = context.serializeEvent(context.getAssignedEvent()); // Serializes the event
+
+                DatagramPacket packet = new DatagramPacket( // Sends the data as a confirmation that it was correctly completed
+                        data, data.length,
+                        InetAddress.getLocalHost(), 6000
+                );
+
+                context.getSendReceiveSocket().send(packet); // Snd it to the drone subsystems
+            }catch (IOException e){
+                e.printStackTrace();
+            }
         }
         else {
             System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity ("
-                    + context.getCurrentEvent().getSeverity() + ")!");
+                    + context.getAssignedEvent().getSeverity() + ")!");
             context.setLocalTime(context.getLocalTime().plusNanos((long) (context.DECELERATION_TIME * 1000000000))); // Adds the local time
         }
         System.out.println("["+context.getName() + "]: RETURNING TO BASE: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the watter was dropped and that it's returning to base
@@ -220,13 +287,10 @@ class ReturningToBaseState extends InFieldState {
      */
     @Override
     public void handle(Drone context){
-        double travelZoneTime2 = context.calculateZoneTravelTime(context.getCurrentEvent());
+        double travelZoneTime2 = context.calculateZoneTravelTime(context.getAssignedEvent());
         context.setLocalTime(context.getLocalTime().plusSeconds((long) travelZoneTime2 - 4));
         context.sleepFor(travelZoneTime2); // Simulates the travel zone time
         System.out.println("["+context.getName() + "] ARRIVED BACK AT BASE AND READY FOR NEXT EVENT: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the drone has arrived back and is now ready for the next event
-        context.setHandledEvent(context.getCurrentEvent());
-        context.setChangedEvent(false);
-        context.setCurrentEvent(null);
         context.setAssignedEvent(null);
         context.drainBattery(travelZoneTime2);
         context.setDroneState(new RefillState());

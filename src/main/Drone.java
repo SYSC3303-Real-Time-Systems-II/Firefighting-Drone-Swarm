@@ -1,3 +1,5 @@
+import java.io.*;
+import java.net.DatagramSocket;
 import java.time.*;
 
 /**
@@ -8,7 +10,7 @@ import java.time.*;
  * @version 2.0
  */
 public class Drone implements Runnable{
-    private final int ID; // This will be the ID of the drone
+    private int ID; // This will be the ID of the drone
     public final double ACCELERATION_TIME = 0.051; // The acceleration time of the drone
     public final double DECELERATION_TIME = 0.075; // The deceleration time of the drone
     public final double TOP_SPEED = 20.8; // Top speed of the drone in meters per second
@@ -16,33 +18,36 @@ public class Drone implements Runnable{
     public final double MAX_WATER_CAPACITY = 30.0;
     public final double MAX_BATTERY_CAPACITY = 100.0;
     public static final double BATTERY_DRAIN_RATE = 0.1; // battery % drained per second
-    private final String name; // This will be the name of teh drone based on its ID
+    private String name; // This will be the name of teh drone based on its ID
+    private int portID = 8000;
 
     private static int nextID = 1; // Will be used to uniquely increment the ID
     private LocalTime localTime; // Will have the local time start of the event
     private double waterLevel = MAX_WATER_CAPACITY;
     private double batteryLevel = MAX_BATTERY_CAPACITY;
 
-
-    private boolean changedEvent;
     private DroneStateMachine droneState; // This will be used for the drones state
     private Coordinate currentCoordinates;
     private InputEvent assignedEvent;
-    private InputEvent currentEvent;
-    private InputEvent handledEvent; // Completed or failed events
+    private DatagramSocket sendReceiveSocket; // A socket for the drone to send to receive
 
     /**
      * The constructor of the done system assigns a new ID and the state as available to start.
      */
     public Drone() {
-        this.ID = nextID++;
-        this.name = "Drone" + ID;
-        this.localTime = null;
-        this.droneState = new AvailableState();
-        this.currentCoordinates = new Coordinate(0,0);
-        this.assignedEvent = null;
-        this.handledEvent = null;
-        this.changedEvent = false;
+        try {
+            this.ID = nextID;
+            this.portID += nextID;
+            sendReceiveSocket = new DatagramSocket(portID); // Creates a new socket
+            this.name = "Drone" + ID;
+            this.localTime = null;
+            this.droneState = new AvailableState();
+            this.currentCoordinates = new Coordinate(0,0);
+            this.assignedEvent = null;
+            nextID++;
+        } catch (IOException e){
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -53,6 +58,13 @@ public class Drone implements Runnable{
         return currentCoordinates;
     }
 
+    /**
+     * Gets the portID number for the drone.
+     * @return the portID of the drone.
+     */
+    public int getPortID(){
+        return portID;
+    }
 
     /**
      * Gets the name of the drone.
@@ -62,17 +74,43 @@ public class Drone implements Runnable{
         return name;
     }
 
-    // Synchronized setter for changedEvent
-    public synchronized void setChangedEvent(boolean changedEvent) {
-        this.changedEvent = changedEvent;
-    }
-
     /**
      * Sets the local time.
      * @param localTime the local time.
      */
     public void setLocalTime(LocalTime localTime) {
         this.localTime = localTime;
+    }
+
+    /**
+     * Gets the socket for the drone.
+     * @return the socket for the drone.
+     */
+    public DatagramSocket getSendReceiveSocket() {
+        return sendReceiveSocket;
+    }
+
+    /**
+     * serializes the event.
+     * @param event to be serialized.
+     * @return the serialized events.
+     */
+    public byte[] serializeEvent(InputEvent event) throws IOException {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeObject(event);
+        return bos.toByteArray();
+    }
+
+    /**
+     * Deserialize the event that was received from the event subsystem.
+     * @param data the event that was received
+     * @return deserialized event.
+     */
+    public InputEvent deserializeEvent(byte[] data) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream bis = new ByteArrayInputStream(data);
+        ObjectInputStream ois = new ObjectInputStream(bis);
+        return (InputEvent) ois.readObject();
     }
 
     /**
@@ -113,31 +151,6 @@ public class Drone implements Runnable{
         this.batteryLevel = MAX_BATTERY_CAPACITY;
     }
 
-    /**
-     * Gets the completed event of the drone.
-     * @return the completed event of the drone.
-     */
-    public InputEvent getHandledEvent() {
-        synchronized (this) {
-            return handledEvent;
-        }
-    }
-
-    /**
-     * Sets the completed of the drone.
-     * @param handledEvent the completed event of the drone.
-     */
-    public void setHandledEvent(InputEvent handledEvent){
-        this.handledEvent = handledEvent;
-    }
-
-    /**
-     * Sets the current event of the drone.
-     * @param currentEvent the new current event of the drone.
-     */
-    public synchronized void setCurrentEvent(InputEvent currentEvent){
-        this.currentEvent = currentEvent;
-    }
 
     /**
      * Sets the drone state of the drone.
@@ -172,13 +185,6 @@ public class Drone implements Runnable{
         return localTime;
     }
 
-    /**
-     * Gets the current event of the drone.
-     * @return the current event of the drone.
-     */
-    public synchronized InputEvent getCurrentEvent() {
-        return currentEvent;
-    }
 
     /**
      * A method use to simulate battery drain in the span of seconds given for the drone.
@@ -221,39 +227,21 @@ public class Drone implements Runnable{
         return ID;
     }
 
-    public void setAssignedEvent(InputEvent event) {
-            synchronized (this) {
-                this.assignedEvent = event;
-                notify();  // Notify the waiting thread that an event is available
-            }
-    }
-
-
     /**
-     * Check if the task was switched and recalculates and moves to state.
+     * Sets the assigned event.
+     * @param event
      */
-    public void checkIfTaskSwitch() {
-        InputEvent assignedTask = getAssignedEvent();
-        if (assignedTask != null) {
-            InputEvent oldTask = getCurrentEvent();
-            setAssignedEvent(null);
-            setCurrentEvent(assignedTask);
-            // System.out.println("[" + name + "] TASK SWITCHED FROM " + (oldTask != null ? oldTask.getZoneId() : "NONE") + " TO " + assignedTask.getZoneId());
-            System.out.println("[" + name + "] TASK SWITCHED " +  oldTask.getEventID() + " --> " + assignedTask.getEventID());
-
-            // Reset state to handle new task (e.g., recalculate path)
-            if (droneState instanceof CruisingState) {
-                setDroneState(new AscendingState()); // Restart ascent for new task
-            }
-        }
+    public void setAssignedEvent(InputEvent event) {
+        this.assignedEvent = event;
     }
+
 
     /**
      * Update location of the drone from the given seconds past.
      * @param seconds the time in seconds.
      */
     public void updateLocation(double seconds){
-        Coordinate fireCoordinates = currentEvent.getZone().getZoneCenter();
+        Coordinate fireCoordinates = assignedEvent.getZone().getZoneCenter();
 
         double distanceToTravel = Math.sqrt(Math.pow(fireCoordinates.getX() - currentCoordinates.getX(), 2) + Math.pow(fireCoordinates.getY() - currentCoordinates.getY(), 2));
 
@@ -266,29 +254,6 @@ public class Drone implements Runnable{
         currentCoordinates = new Coordinate(updatedX, updatedY);
     }
 
-
-    /**
-     * Wait for task to be given to the drone.
-     */
-    public void waitForTask(){
-        synchronized (this) {
-            while (this.assignedEvent == null) {
-                try {
-                    if (this.getDroneState() instanceof StuckState || this.getDroneState() instanceof JammedState) { // If the drone was stuck or the nozzle is broken makes the drone unavailable
-                        System.out.println("[" + this.name + "] NOW OFFLINE."); // Makes the drone offline
-                    }
-                    else {
-                        System.out.println("[" + this.name + "] WAITING FOR EVENT."); // Else prints that the drone is waiting for an event
-                    }
-                    wait(); // Waits
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            setCurrentEvent(this.assignedEvent); // Move the assignedEvent to Current Event
-            setAssignedEvent(null); // Makes the assigned event null now
-        }
-    }
 
     @Override
     public void run() {

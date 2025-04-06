@@ -39,8 +39,6 @@ public class Scheduler implements Runnable {
             this.zones = new HashMap<>();
             this.receiveAndSendFISSocket = new DatagramSocket(5000); // Has a port of 5000
             this.receiveAndSendDSSSocket = new DatagramSocket(5001); // Has a port of 5001
-            this.receiveAndSendDSSSocket.setSoTimeout(2000); // 2-second timeout
-            this.receiveAndSendFISSocket.setSoTimeout(2500);
             this.currentState = SchedulerState.RECEIVE_FROM_FIS;
 
         }catch (IOException e) {
