@@ -67,7 +67,19 @@ public class DroneMapView extends JPanel {
 
         if (event.getFaultType() != null) {
             failedEvents.put(event.getEventID(), event);
-            System.out.println("event failed...");
+            System.out.println("event failed... showing fault for 5s...");
+
+            // Start a one-shot timer that removes the event from failedEvents after 5 seconds
+            Timer faultTimer = new Timer(5000, e -> {
+                failedEvents.remove(event.getEventID());
+                // Repaint so the fault icon/label disappears
+                SwingUtilities.invokeLater(this::repaint);
+            });
+            faultTimer.setRepeats(false);
+            faultTimer.start();
+        } else {
+            // If the event's fault is cleared, remove from failedEvents
+            failedEvents.remove(event.getEventID());
         }
         repaint();
     }
@@ -184,6 +196,7 @@ public class DroneMapView extends JPanel {
                 drawZones(g);
                 drawFires(g);
                 drawDrones(g);
+                drawFaults(g);
             }
         };
         panel.setPreferredSize(new Dimension(cols * CELL_SIZE, rows * CELL_SIZE));
@@ -234,6 +247,63 @@ public class DroneMapView extends JPanel {
                 g.drawString(status.getDroneName(), cellX * CELL_SIZE, cellY * CELL_SIZE);
             }
         }
+    }
+
+    private void drawFaults(Graphics g) {
+        Image faultImage = loadImage("error.png");
+        if (failedEvents.isEmpty() || droneStatuses == null) return;
+
+        // For each fault, find the matching drone's coordinates, then draw a red "FAULT"
+        for (InputEvent faultEvent : failedEvents.values()) {
+            String droneName = faultEvent.getHandlingDrone();
+            if (droneName == null) continue;
+
+            // Find the drone's position from the statuses
+            DroneStatus faultedDrone = findDroneStatusByName(droneName);
+            if (faultedDrone == null) {
+                continue; // no matching drone found
+            }
+
+            int cellX = (int) (faultedDrone.getX() / CELL_SIZE);
+            int cellY = (int) (faultedDrone.getY() / CELL_SIZE);
+
+            // Slightly below the cell
+            int labelX = cellX * CELL_SIZE;
+            int labelY = (cellY + 1) * CELL_SIZE + 12;
+
+            int iconSize = 16;
+            int iconOffsetY = labelY - (iconSize - 4);
+
+            g.drawImage(faultImage, labelX, iconOffsetY, iconSize, iconSize, this);
+
+            g.setColor(Color.RED);
+
+            String faultMessage = new String();
+
+            if (faultEvent.getFaultType() == FaultType.JAMMED) {
+                faultMessage = "NOZZLE IS JAMMED";
+            }
+            if (faultEvent.getFaultType() == FaultType.CORRUPT) {
+                faultMessage = "MESSAGE RECEIVED IS CORRUPTED";
+            }
+            if (faultEvent.getFaultType() == FaultType.STUCK){
+                faultMessage = "GOT STUCK MID-FLIGHT - GOING OFFLINE";
+            }
+            String faultLabel = droneName + " FAULT: " + faultMessage;
+            g.drawString(faultLabel, labelX + iconSize + 4, labelY);
+        }
+    }
+
+    /**
+     * Helper method to find a drone by name in the current statuses.
+     */
+    private DroneStatus findDroneStatusByName(String name) {
+        for (DroneStatus ds : droneStatuses) {
+            if (ds.getDroneName().equals(name)) {
+                return ds;
+            }
+        }
+        return null;
     }
 
     private void drawFires(Graphics g) {
