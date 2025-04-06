@@ -1,9 +1,12 @@
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class DroneModel implements Runnable{
     private List<Drone> drones;
     private Map <String, Coordinate> coords = new HashMap<>();
     private Map <String, DroneStateMachine> states = new HashMap<>();
+    private final ConcurrentLinkedQueue<Drone> availableDrones = new ConcurrentLinkedQueue<>();
+
 
     public DroneModel (List<Drone> drones){
         this.drones = drones;
@@ -17,11 +20,17 @@ public class DroneModel implements Runnable{
                     coords.put(drone.getName(), drone.getCurrentCoordinates());
                     states.put(drone.getName(), drone.getDroneState());
                 }
+
+                // Update available drones based on current state
+                if (drone.getDroneState() instanceof AvailableState) {
+                    if (!availableDrones.contains(drone)) {
+                        availableDrones.add(drone);
+                    }
+                } else {
+                    availableDrones.remove(drone);
+                }
+
             }
-                //for debugging -- will print out each drones curr location
-//            for (Map.Entry<String, Coordinate> entry : hm.entrySet()) {
-//                System.out.println("(********************"+entry.getKey() + " -> " + entry.getValue());
-//            }
         }
     }
 
@@ -30,5 +39,8 @@ public class DroneModel implements Runnable{
     }
     public Map <String, DroneStateMachine> getStates() {
         return states;
+    }
+    public ConcurrentLinkedQueue<Drone> getAvailableDrones() {
+        return availableDrones;
     }
 }

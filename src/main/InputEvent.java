@@ -21,7 +21,7 @@ public class InputEvent implements Serializable {
     private Status status;                  // Current status of the event (e.g., UNRESOLVED, COMPLETE)
     private int eventID;                    // The ID of the event
     private FaultType faultType; // The fault time that is associated with the input event
-
+    private String handlingDrone;
     private final int initialSeverity; // initial fire severity
     private int remainingAgentNeeded;  // remaining agent needed
 
@@ -46,7 +46,24 @@ public class InputEvent implements Serializable {
         this.faultType = faultType;
         this.initialSeverity = Severity.valueOf(severity).getValue();
         this.remainingAgentNeeded = this.initialSeverity;
+        this.handlingDrone = "";
         InputEventID ++;
+    }
+
+    /**
+     * gets the handelingDrone name
+     * @return handelingDrone name
+     */
+    public String getHandlingDrone() {
+        return handlingDrone;
+    }
+
+    /**
+     * Sets the handelingDrone name
+     * @param handlingDrone - handlingDrone name
+     */
+    public void setHandlingDrone(String handlingDrone) {
+        this.handlingDrone = handlingDrone;
     }
 
     /**
