@@ -181,7 +181,7 @@ public class DroneSubsystem implements Runnable {
      * @param event The {@link InputEvent} for which a drone is needed.
      * @return The closest available {@link Drone}, or null if no drone is available.
      */
-    private Drone chooseDroneAlgorithm(InputEvent event) {
+    public Drone chooseDroneAlgorithm(InputEvent event) {
 
         Coordinate eventCoords = event.getZone().getZoneCenter();
         Drone closestDrone = null;
@@ -236,7 +236,7 @@ public class DroneSubsystem implements Runnable {
      * @return A byte array representing the serialized event.
      * @throws IOException If an I/O error occurs during serialization.
      */
-    private byte[] serializeEvent(InputEvent event) throws IOException {
+    public byte[] serializeEvent(InputEvent event) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(bos);
         oos.writeObject(event);
@@ -252,7 +252,7 @@ public class DroneSubsystem implements Runnable {
      * @throws IOException            If an I/O error occurs during deserialization.
      * @throws ClassNotFoundException If the class of the serialized object cannot be found.
      */
-    private InputEvent deserializeEvent(byte[] data) throws IOException, ClassNotFoundException {
+    public InputEvent deserializeEvent(byte[] data) throws IOException, ClassNotFoundException {
         ByteArrayInputStream bis = new ByteArrayInputStream(data);
         ObjectInputStream ois = new ObjectInputStream(bis);
         return (InputEvent) ois.readObject();
