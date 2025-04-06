@@ -1,6 +1,7 @@
 import java.io.Serializable;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 /**
  * The InputEvent class represents a fire incident event read by the FireIncidentSubsystem.
@@ -19,7 +20,10 @@ public class InputEvent implements Serializable {
     private Severity severity;              // Severity of the event (e.g., High, Moderate, Low)
     private Status status;                  // Current status of the event (e.g., UNRESOLVED, COMPLETE)
     private int eventID;                    // The ID of the event
-    private FaultType faultType;            // The fault time that is associated with the input event
+    private FaultType faultType; // The fault time that is associated with the input event
+
+    private final int initialSeverity; // initial fire severity
+    private int remainingAgentNeeded;  // remaining agent needed
 
     /**
      * Constructs an InputEvent object.
@@ -40,6 +44,8 @@ public class InputEvent implements Serializable {
         this.status = status;
         this.eventID = InputEventID;
         this.faultType = faultType;
+        this.initialSeverity = Severity.valueOf(severity).getValue();
+        this.remainingAgentNeeded = this.initialSeverity;
         InputEventID ++;
     }
 
@@ -176,8 +182,35 @@ public class InputEvent implements Serializable {
     }
 
     /**
+     * Gets the remaining Agent needed to handle fire
+     * @return integer indicating the amount of agent still needed
+     */
+    public int getRemainingAgentNeeded() { return remainingAgentNeeded; }
+
+    /**
+     * Update the value of the agent needed to handle the fire
+     * @param remainingAgentNeeded  new agent level
+     */
+    public void setRemainingAgentNeeded(int remainingAgentNeeded) {
+        this.remainingAgentNeeded = remainingAgentNeeded;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        InputEvent that = (InputEvent) o;
+        return eventID == that.eventID;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(eventID);
+    }
+
+    /**
      * Returns a string representation of the event.
-     *
      * @return A string containing the event's time, zone ID, event type, and severity.
      */
     @Override

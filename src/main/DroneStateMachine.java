@@ -189,23 +189,22 @@ class DropAgentState extends InFieldState {
      */
     @Override
     public void handle(Drone context) {
-        int waterNeeded = context.getCurrentEvent().getSeverity().getValue();
-        double currentCapacity = context.getWaterLevel();
-        if (currentCapacity >= waterNeeded) {
-            System.out.println("["+context.getName() + "]: DROPPING WATER (" + waterNeeded + " L) at time: " + context.getLocalTime());
-            MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.FIRE_EXTINGUISHED, context.getCurrentEvent(), context.getName());
-            context.setWaterLevel(currentCapacity - waterNeeded);
-            context.sleepFor(context.DROP_WATER_TIME);
-            context.setLocalTime(context.getLocalTime().plusSeconds((long) context.DROP_WATER_TIME));
-            context.drainBattery(context.DROP_WATER_TIME);
-            context.setDropCompleted(true);
+        InputEvent event = context.getCurrentEvent();
+        int waterAvailable = (int) context.getWaterLevel();
+        int remainingAgentNeeded = event.getRemainingAgentNeeded() - waterAvailable;    //calculate the amount of agent still needed
+        MetricAnalysisLogger.logEvent(MetricAnalysisLogger.EventStatus.FIRE_EXTINGUISHED, context.getCurrentEvent(), context.getName());
+        event.setRemainingAgentNeeded(remainingAgentNeeded);
+        context.setWaterLevel(context.getWaterLevel() - remainingAgentNeeded);
+        context.sleepFor(context.DROP_WATER_TIME);
+        context.drainBattery(context.DROP_WATER_TIME);
+        context.sleepFor(context.DECELERATION_TIME); // Simulates the deceleration time
+        int remainingAgent = event.getRemainingAgentNeeded();
+        if (remainingAgent < 0){
+            remainingAgent = 0;
         }
-        else {
-            System.out.println("["+context.getName() + "]: NOT ENOUGH WATER to handle severity (" + context.getCurrentEvent().getSeverity() + ")!");
-            context.setLocalTime(context.getLocalTime().plusNanos((long) (context.DECELERATION_TIME * 1000000000))); // Adds the local time
-        }
+        System.out.println("["+context.getName() + "] DROPPED " + waterAvailable + "L " + "(Remaining: " + remainingAgent + "L)");
         System.out.println("["+context.getName() + "]: RETURNING TO BASE: AT TIME: " + context.getLocalTime()); // Prints out a message saying that the watter was dropped and that it's returning to base
-        // sleepFor(DECELERATION_TIME); // Simulates the deceleration time
+        context.setDropCompleted(true);
         context.setDroneState(new ReturningToBaseState());
     }
 }
@@ -221,7 +220,6 @@ class ReturningToBaseState extends InFieldState {
         int currentTime = 0;
 
         while (currentTime < travelTime) {
-            context.checkIfTaskSwitch();
 
             // Recalculate in case position changed mid-flight
             travelTime = context.calculateReturnTravelTime();

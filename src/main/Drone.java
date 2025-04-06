@@ -1,4 +1,5 @@
 import java.time.*;
+import java.util.Map;
 
 /**
  * This class is the drone class which has a unique identifier, a name, and a state. The drone is coordinated by the drone subsystem
@@ -13,7 +14,7 @@ public class Drone implements Runnable{
     public final double DECELERATION_TIME = 0.075; // The deceleration time of the drone
     public final double TOP_SPEED = 20.8; // Top speed of the drone in meters per second
     public final double DROP_WATER_TIME = 20.0; // The time it takes for the drone to drop the water
-    public final double MAX_WATER_CAPACITY = 30.0;
+    public final double MAX_WATER_CAPACITY = 15.0;
     public final double MAX_BATTERY_CAPACITY = 100.0;
     public static final double BATTERY_DRAIN_RATE = 0.1; // battery % drained per second
     private final String name; // This will be the name of teh drone based on its ID

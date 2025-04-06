@@ -142,7 +142,6 @@ class MetricAnalysisLogger {
                 droneAssignedEvents.put(droneName, currentTime);
             }
             case FIRE_EXTINGUISHED -> {
-                System.out.println("Fire extinguished: " + Duration.between(startingTime, currentTime));
                 fireExtinguishedResponseTime(currentEvent.getEventID(), currentTime);
                 calculateThroughPut();
             }
