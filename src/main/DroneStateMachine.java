@@ -51,6 +51,8 @@ class AvailableState extends InBaseState {
 
             context.setAssignedEvent(event); // Sets the assigned event of the drone from the one it received
 
+            event.setHandlingDrone(context.getName());
+
             context.setLocalTime(context.getAssignedEvent().getTime());
             System.out.println("["+context.getName() + "] GOT INPUT_EVENT_" + context.getAssignedEvent().getEventID() + " (" + context.getAssignedEvent().toString() + ")" + " AT TIME: " + context.getLocalTime());
             context.setLocalTime(context.getLocalTime().plusNanos((long) (context.ACCELERATION_TIME * 1000000000)));  // Adds the local time
@@ -208,6 +210,7 @@ class CorruptState extends InFieldState {
             Thread.sleep(10000);
             System.out.println("[" + context.getName() + "] DRONE RESTARTED.");
 
+            context.getAssignedEvent().setHandlingDrone(context.getName());
             // Clear fault and transition to AvailableState
             context.getAssignedEvent().setFaultType(null); // Clear the fault
             context.setDroneState(new AvailableState());
