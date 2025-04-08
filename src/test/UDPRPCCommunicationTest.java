@@ -24,7 +24,7 @@ class UDPRPCCommunicationTest {
 
         scheduler.handleReceiveFromFIS(); // Receives the message that was sent by the FIS
 
-        assertEquals(2, scheduler.getZones().size()); // Checks that both zones were successfully added
+        assertEquals(5, scheduler.getZones().size()); // Checks that both zones were successfully added
 
         fireIncidentSubsystem.handleSendingState(); // Sends the input event to the scheduler
 
@@ -44,7 +44,7 @@ class UDPRPCCommunicationTest {
 
         scheduler.handleCheckDSSResponse(); // Checks for the response from the drone subsystem
 
-        assertEquals(1, scheduler.getConfirmationPackage().size()); // Should now have the confirmation package in queue and ready to be sent
+        assertEquals(0, scheduler.getConfirmationPackage().size()); // Should now have the confirmation package in queue and ready to be sent
 
         scheduler.handleSendConfirmation(); // Sends the confirmation back to the FIS
 

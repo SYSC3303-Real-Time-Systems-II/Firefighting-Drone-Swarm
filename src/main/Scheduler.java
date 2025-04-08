@@ -1,3 +1,4 @@
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -156,12 +157,15 @@ public class Scheduler implements Runnable {
             // Check for RelayPackage from FireIncidentSubsystem
             if (receivedPackage.getRelayPackageID().contains("ZONE_PKG")) { // If a zone package was received from the fire incident subsystem
                 this.addZones(receivedPackage.getZone(), this.systemType, this.name);
+                sendZoneInfoToGUI(new ArrayList<>(zones.values()));
             }
             else { // If we have received an event package
                 System.out.println("["+this.name + "] RECEIVED AN EVENT <-- " + receivedPackage.getRelayPackageID() + " (" + receivedPackage.getEvent().toString() + ")" + " FROM: " + Systems.FireIncidentSubsystem); // Prints out a message that the event was received
                 // Process the event and add it to the inputEvents queue
                 receivedPackage.getEvent().setZone(zones.get(receivedPackage.getEvent().getZoneId())); // Set the zone for the event
                 this.inputEvents.add(receivedPackage.getEvent()); // Adds the input events to the list of input events for the drone subsystem
+                receivedPackage.getEvent().setStatus(Status.UNRESOLVED);
+                sendEventToGUI(receivedPackage.getEvent());
             }
             return true;
         }catch (SocketTimeoutException e) {
@@ -221,14 +225,17 @@ public class Scheduler implements Runnable {
             if(receivedInput.getFaultType() != null){
                 System.out.println("["+this.name + "] RECEIVED FAULT CONFIRMATION <-- " + "INPUT_EVENT_" + receivedInput.getEventID() + " (" + receivedInput + ")" + " FROM: DroneSubsystem");
                 sendingPackage.setRelayPackageID("FAULT_CONFIRMATION");
+                sendingPackage.getEvent().setStatus(Status.UNRESOLVED);
             }
             else {
                 System.out.println("["+this.name + "] RECEIVED COMPLETED CONFIRMATION <-- " + "INPUT_EVENT_" + receivedInput.getEventID()  + " (" + receivedInput + ")" + " FROM: DroneSubsystem");
                 sendingPackage.setRelayPackageID("DRONE_CONFIRMATION");
+                sendingPackage.getEvent().setStatus(Status.COMPLETE);
             }
 
             // Create a confirmation package and place in confirmationPackages queue
             confirmationPackages.add(sendingPackage);
+            sendEventToGUI(sendingPackage.getEvent());
             return true;
 
         } catch (SocketTimeoutException e) {
@@ -300,6 +307,44 @@ public class Scheduler implements Runnable {
         }
         currentState = SchedulerState.RECEIVE_FROM_FIS;
     }
+    private void sendZoneInfoToGUI(List<Zone> zoneList) {
+        try (DatagramSocket guiSocket = new DatagramSocket()) {
+            byte[] data = serializeObject(zoneList);
+
+            DatagramPacket packet = new DatagramPacket(
+                    data, data.length,
+                    InetAddress.getLocalHost(), 8000
+            );
+            guiSocket.send(packet);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendEventToGUI(InputEvent event){
+        try (DatagramSocket guiSocket = new DatagramSocket()) {
+            byte[] data = serializeObject(event);
+            DatagramPacket packet = new DatagramPacket(
+                    data, data.length,
+                    InetAddress.getLocalHost(), 8000
+            );
+            guiSocket.send(packet);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private byte[] serializeObject(Object obj) throws IOException {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        try (ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)) {
+            objectStream.writeObject(obj);
+            objectStream.flush();
+        }
+        return byteStream.toByteArray();
+    }
+
 
     /**
      * The run method is executed when the thread starts.

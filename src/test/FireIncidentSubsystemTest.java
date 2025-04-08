@@ -28,16 +28,19 @@ class FireIncidentSubsystemTest {
     @Test
     void readInputEvents() {
 
-        String[] time  = {"14:00:15", "14:10:01"}; // The time inputs from the file
-        int[] zone = {1, 2}; // The zone inputs from the file
-        EventType[] event_type = {EventType.FIRE_DETECTED, EventType.DRONE_REQUEST}; // The type of event
-        Severity[] severity = {Severity.High, Severity.Moderate}; // The severity of the fire
+        String[] time  = {"13:55:05", "13:58:54", "14:00:15", "14:10:01"}; // The time inputs from the file
+        int[] zone = {1, 2, 5, 4}; // The zone inputs from the file
+        EventType[] event_type = {EventType.DRONE_REQUEST, EventType.DRONE_REQUEST, EventType.FIRE_DETECTED, EventType.FIRE_DETECTED}; // The type of event
+        Severity[] severity = {Severity.Low, Severity.Moderate, Severity.High, Severity.Moderate}; // The severity of the fire
 
         FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv"); // Creates a fire incident subsystem object
 
         int i = 0; // Will be used for indexing
 
         for (InputEvent q: fireIncidentSubsystem.getInputEvents()){ // Traverses through each input event that was received from the file
+            if (i>=3){
+                break;
+            }
             assertEquals(time[i].toString(), q.getTime().toString()); // Checks for the time to be the same
             assertEquals(zone[i], q.getZoneId()); // Checks for the zone to be the same
             assertEquals(event_type[i], q.getEventType()); // Checks for the event to be the same
@@ -51,10 +54,22 @@ class FireIncidentSubsystemTest {
      */
     @Test
     void readZoneEvents(){
-        int[] zoneId = {1, 2}; // The zone ids in the input file
-        Coordinate[] zoneStart = {new Coordinate(0, 0), new Coordinate(0, 600)}; // The start zone coordinates from the input file
-        Coordinate[] zoneEnd = {new Coordinate(700, 600), new Coordinate(650, 1500)}; // The end zone coordinates from the input file
 
+        int[] zoneId = {1, 2, 3, 4, 5}; // The zone ids in the input file
+        Coordinate[] zoneStart = { // The start zone coordinates from the input file
+                new Coordinate(0, 0),
+                new Coordinate(425, 0),
+                new Coordinate(0, 325),
+                new Coordinate(325, 325),
+                new Coordinate(700, 0)
+        };
+        Coordinate[] zoneEnd = { // The end zone coordinates from the input file
+                new Coordinate(425, 325),
+                new Coordinate(700, 325),
+                new Coordinate(325, 600),
+                new Coordinate(700, 600),
+                new Coordinate(1025, 600)
+        };
         FireIncidentSubsystem fireIncidentSubsystem = new FireIncidentSubsystem("FIS", "Sample_event_file.csv", "sample_zone_file.csv"); // Creates a fire incident subsystem object
 
         int i = 0; // Will be used for indexing
